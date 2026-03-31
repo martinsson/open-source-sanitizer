@@ -88,6 +88,9 @@ def scan_content(
     commit_sha: str | None = None,
 ) -> list[Finding]:
     """Use LLM to assess if code contains sensitive government algorithms."""
+    if config.scoring.sensitive_algorithm == 0.0:
+        return []
+
     # Skip very short files
     lines = content.splitlines()
     if len(lines) < 10:
