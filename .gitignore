@@ -9,3 +9,6 @@ build/
 .venv/
 .env
 .uv/
+
+# Internal domains blacklist — contains sensitive infrastructure names
+internal_domains_blacklist.yaml
