@@ -21,6 +21,24 @@ TYPE_ORDER = [
 ]
 
 
+def _render_summary_table(grouped: dict, heading: str = "## Summary") -> list[str]:
+    """Render the summary table as markdown lines."""
+    lines: list[str] = []
+    lines.append(heading)
+    lines.append("")
+    lines.append("| Category | Count | Score |")
+    lines.append("|----------|------:|------:|")
+    for ftype in TYPE_ORDER:
+        label, _ = TYPE_LABELS[ftype]
+        items = grouped.get(ftype, [])
+        score = sum(f.score for f in items)
+        lines.append(f"| {label} | {len(items)} | {score:.1f} |")
+    total_findings = sum(len(grouped.get(ft, [])) for ft in TYPE_ORDER)
+    total_score = sum(sum(f.score for f in grouped.get(ft, [])) for ft in TYPE_ORDER)
+    lines.append(f"| **Total** | **{total_findings}** | **{total_score:.1f}** |")
+    return lines
+
+
 def render_markdown(report: ScanReport) -> str:
     """Render a ScanReport as a Markdown document."""
     lines: list[str] = []
@@ -36,16 +54,7 @@ def render_markdown(report: ScanReport) -> str:
 
     # Summary table
     grouped = report.findings_by_type()
-    lines.append("## Summary")
-    lines.append("")
-    lines.append("| Category | Count | Score |")
-    lines.append("|----------|------:|------:|")
-
-    for ftype in TYPE_ORDER:
-        label, _ = TYPE_LABELS[ftype]
-        items = grouped.get(ftype, [])
-        score = sum(f.score for f in items)
-        lines.append(f"| {label} | {len(items)} | {score:.1f} |")
+    lines.extend(_render_summary_table(grouped))
 
     lines.append("")
 
@@ -83,6 +92,13 @@ def render_markdown(report: ScanReport) -> str:
             lines.append(finding.snippet)
             lines.append("```")
             lines.append("")
+
+    # Bottom summary (repeat for easy access after reading findings)
+    if report.findings:
+        lines.append("---")
+        lines.append("")
+        lines.extend(_render_summary_table(grouped, heading="## Summary (repeat)"))
+        lines.append("")
 
     # Footer
     lines.append("---")
