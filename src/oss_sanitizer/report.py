@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from .models import FindingType, ScanReport
+from .scanners.dependencies import render_dependency_report
 
 TYPE_LABELS = {
     FindingType.SECRET: ("Secrets & Credentials", "Hardcoded secrets, API keys, passwords, tokens, and private keys."),
@@ -92,6 +93,13 @@ def render_markdown(report: ScanReport) -> str:
             lines.append(finding.snippet)
             lines.append("```")
             lines.append("")
+
+    # Internal dependencies section
+    if report.internal_dependencies:
+        lines.append("---")
+        lines.append("")
+        lines.append(render_dependency_report(report.internal_dependencies, report.repo_path))
+        lines.append("")
 
     # Bottom summary (repeat for easy access after reading findings)
     if report.findings:

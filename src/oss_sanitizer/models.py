@@ -34,6 +34,7 @@ class ScanReport:
     repo_path: str
     scan_history: bool
     findings: list[Finding] = field(default_factory=list)
+    internal_dependencies: list = field(default_factory=list)  # list[Dependency]
 
     @property
     def total_score(self) -> float:

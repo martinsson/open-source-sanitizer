@@ -10,7 +10,7 @@ import git
 
 from .config import Config
 from .models import Finding, ScanReport
-from .scanners import secrets, urls, algorithms
+from .scanners import secrets, urls, algorithms, dependencies
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +176,10 @@ def scan(
         report.findings.extend(
             scan_git_history(repo_path, config, progress_callback)
         )
+
+    # Scan for internal Maven dependencies
+    logger.info("Scanning for internal dependencies...")
+    report.internal_dependencies = dependencies.find_internal_dependencies(repo_path, config)
 
     # Deduplicate: same file + line + type + description
     seen = set()
