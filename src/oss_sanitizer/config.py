@@ -114,7 +114,7 @@ class Config:
     @classmethod
     def from_yaml(cls, path: Path) -> Config:
         """Load config from a YAML file, merging with defaults."""
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
 
         config = cls()
@@ -139,7 +139,7 @@ class Config:
         if not path.exists():
             return
 
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
 
         domains: list[str] = []
@@ -163,7 +163,7 @@ class Config:
             logger.debug(f"No blacklist file at {path}")
             return
 
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
 
         if "internal_url_domains" in data:
