@@ -1,0 +1,27 @@
+# Internal domains blacklist for oss-sanitizer
+# ⚠️  Copy this file to internal_domains_blacklist.yaml and fill in your actual internal domains.
+# ⚠️  The .yaml file is gitignored — never commit actual internal domain names!
+#
+# These patterns will be flagged as INTERNAL infrastructure when found in source code.
+# Use regex patterns (will be compiled with re.compile).
+
+# Internal URL domain patterns (regex)
+internal_url_domains:
+  - '\\.etat-ge\\.ch'          # Internal state domains
+  - '\\.internal\\.ge\\.ch'    # Internal subdomains
+  # Add your actual internal domains below:
+  # - '\\.myinternal\\.example\\.ch'
+
+# Internal hostname patterns (regex)
+# These match server names, IPs, and infrastructure identifiers
+hostname_patterns:
+  # Server naming conventions — adjust to match your naming scheme
+  - '\b(?:srv|server|db|app|web|api|proxy|ldap|ad|dc|dns|mail|smtp|imap|ftp|nfs|nas|san|vpn|gw|fw|lb|mgmt|mon|log|bkp|ci|cd|git|svn|jenkins|nexus|sonar|jira|confluence)[-_][a-zA-Z0-9][-a-zA-Z0-9_.]*\b'
+  # Environment suffixes
+  - '\b[a-zA-Z]+-(?:prod|staging|stage|stg|dev|test|uat|preprod|int|recette|rct|qual|qualif)\b'
+  - '\b(?:prod|staging|dev|test|uat|preprod|int|recette|rct)-[a-zA-Z][-a-zA-Z0-9]*\b'
+  # Private IP ranges
+  - '\b(?:10|172\.(?:1[6-9]|2[0-9]|3[01])|192\.168)\.\d{1,3}\.\d{1,3}\b'
+  # Add your specific internal hostnames below:
+  # - '\bgina[-_]'
+  # - '\bmy-specific-server\b'

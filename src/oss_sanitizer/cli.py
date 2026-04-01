@@ -56,6 +56,16 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Print a sample YAML configuration and exit.",
     )
+    parser.add_argument(
+        "--allowlist",
+        help="Path to public domains allowlist YAML (default: bundled file).",
+        default=None,
+    )
+    parser.add_argument(
+        "--blacklist",
+        help="Path to internal domains blacklist YAML.",
+        default=None,
+    )
 
     args = parser.parse_args(argv)
 
@@ -82,6 +92,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.no_llm:
         # Set scoring weight to 0 so the scanner is effectively skipped
         config.scoring.sensitive_algorithm = 0.0
+
+    # Load allowlist and blacklist
+    tool_dir = Path(__file__).resolve().parent.parent.parent
+    allowlist_path = Path(args.allowlist) if args.allowlist else tool_dir / "public_domains_allowlist.yaml"
+    blacklist_path = Path(args.blacklist) if args.blacklist else tool_dir / "internal_domains_blacklist.yaml"
+    config.load_allowlist(allowlist_path)
+    config.load_blacklist(blacklist_path)
 
     repo_path = Path(args.repo).resolve()
     if not (repo_path / ".git").exists():

@@ -1,0 +1,144 @@
+# Public domains allowlist for oss-sanitizer
+# These are known PUBLIC-FACING domains of the Geneva state and related institutions.
+# URLs matching these domains should NOT be flagged as internal URLs.
+#
+# Maintained collaboratively — add entries as new public services are discovered.
+
+# =============================================================================
+# Canton of Geneva (État de Genève / République et canton de Genève)
+# =============================================================================
+
+ge_ch:
+  # Main portal
+  - www.ge.ch
+  - ge.ch
+
+  # Subdomains — public-facing services
+  - sitg.ge.ch           # Système d'Information du Territoire Genevois (GIS/maps)
+  - justice.ge.ch        # Pouvoir judiciaire (judiciary)
+  - edu.ge.ch            # Education portal (DIP)
+  - fao.ge.ch            # Feuille d'avis officielle (official gazette)
+
+  # Path-based apps on ge.ch (treated as public)
+  - ge.ch/annuaire       # State directory
+  - ge.ch/sitg            # SITG portal
+  - ge.ch/archives        # State archives
+  - ge.ch/arvaegconsult   # Archive consultation
+  - ge.ch/legislation     # Recueil systématique genevois (RSG)
+  - ge.ch/demarches       # Administrative procedures
+  - ge.ch/getax           # Online tax declaration
+
+  # GINA-based public apps (identity & access)
+  - ge.ch/ginapartners_public   # Partners public portal
+  - ge.ch/ginaedu_public        # Education public portal
+
+# =============================================================================
+# GenèveID — Public SSO / authentication
+# =============================================================================
+
+geneveid_ch:
+  - geneveid.ch
+  - sso.geneveid.ch      # SSO authentication portal
+  - sse.tim.geneveid.ch  # SSO related
+
+# =============================================================================
+# City of Geneva (Ville de Genève)
+# =============================================================================
+
+geneve_ch:
+  - www.geneve.ch         # Official city website
+  - geneve.ch
+
+ville_ge_ch:
+  - ville-ge.ch           # City of Geneva alternate domain
+
+# =============================================================================
+# Tax software
+# =============================================================================
+
+getax_ch:
+  - www.getax.ch          # GeTax tax software support
+  - getax.ch
+
+# =============================================================================
+# Archives
+# =============================================================================
+
+archives:
+  - archives-etat-ge.ch  # State archives
+
+# =============================================================================
+# ASFIP — Supervision authority
+# =============================================================================
+
+asfip:
+  - www.asfip-ge.ch       # Fondations & prévoyance supervision
+  - asfip-ge.ch
+
+# =============================================================================
+# Public institutions (autonomous / para-state)
+# =============================================================================
+
+public_institutions:
+  - www.hug.ch            # Hôpitaux Universitaires de Genève
+  - hug.ch
+  - www.unige.ch          # University of Geneva
+  - unige.ch
+  - catalogue-si.unige.ch  # IT service catalog UNIGE
+  - www.hesge.ch          # HES-SO Genève
+  - hesge.ch
+  - www.hepia.ch          # HEPIA (engineering school)
+  - hepia.ch
+  - www.sig-ge.ch         # Services Industriels de Genève
+  - sig-ge.ch
+  - www.tpg.ch            # Transports Publics Genevois
+  - tpg.ch
+  - www.bm-geneve.ch      # Bibliothèques municipales
+  - bm-geneve.ch
+  - eduge.ch              # École en ligne (DIP student portal)
+
+# =============================================================================
+# GitHub / Open source
+# =============================================================================
+
+github:
+  - github.com/republique-et-canton-de-geneve
+  - github.com/etat-de-geneve
+  - republique-et-canton-de-geneve.github.io
+
+# =============================================================================
+# Swiss federal (commonly referenced in Geneva state code)
+# =============================================================================
+
+admin_ch:
+  - www.admin.ch          # Swiss federal government
+  - admin.ch
+
+# =============================================================================
+# Generic safe domains (open source, standards, etc.)
+# =============================================================================
+
+generic_safe:
+  - github.com
+  - gitlab.com
+  - opensource.org
+  - creativecommons.org
+  - apache.org
+  - gnu.org
+  - w3.org
+  - xml.org
+  - json-schema.org
+  - schemas.xmlsoap.org
+  - xmlns.com
+  - maven.apache.org
+  - mvnrepository.com
+  - pypi.org
+  - npmjs.com
+  - crates.io
+  - docs.oracle.com
+  - docs.python.org
+  - developer.mozilla.org
+  - stackoverflow.com
+  - wikipedia.org
+  - sonarcloud.io
+  - sonarqube.org
