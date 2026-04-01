@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import logging
+import re
+
 import yaml
 from dataclasses import dataclass, field
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -128,3 +133,47 @@ class Config:
             config.max_file_size_kb = data["max_file_size_kb"]
 
         return config
+
+    def load_allowlist(self, path: Path) -> None:
+        """Load public domains allowlist YAML and add to url_allowlist patterns."""
+        if not path.exists():
+            return
+
+        with open(path) as f:
+            data = yaml.safe_load(f) or {}
+
+        domains: list[str] = []
+        for group in data.values():
+            if isinstance(group, list):
+                for entry in group:
+                    domains.append(entry)
+
+        # Convert domain entries to regex patterns for URL matching
+        for domain in domains:
+            # Escape dots for regex, allow optional protocol prefix
+            escaped = re.escape(domain)
+            pattern = rf"https?://(?:www\.)?{escaped}"
+            self.patterns.url_allowlist.append(pattern)
+
+        logger.info(f"Loaded {len(domains)} allowlisted domains from {path}")
+
+    def load_blacklist(self, path: Path) -> None:
+        """Load internal domains blacklist YAML and add to detection patterns."""
+        if not path.exists():
+            logger.debug(f"No blacklist file at {path}")
+            return
+
+        with open(path) as f:
+            data = yaml.safe_load(f) or {}
+
+        if "internal_url_domains" in data:
+            for pattern in data["internal_url_domains"]:
+                if pattern not in self.patterns.internal_url_domains:
+                    self.patterns.internal_url_domains.append(pattern)
+
+        if "hostname_patterns" in data:
+            for pattern in data["hostname_patterns"]:
+                if pattern not in self.patterns.hostname_patterns:
+                    self.patterns.hostname_patterns.append(pattern)
+
+        logger.info(f"Loaded blacklist from {path}")
