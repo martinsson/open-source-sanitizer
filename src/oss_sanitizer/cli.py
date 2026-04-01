@@ -124,12 +124,12 @@ def main(argv: list[str] | None = None) -> int:
     markdown = render_markdown(report)
 
     if args.output:
-        Path(args.output).write_text(markdown)
+        Path(args.output).write_text(markdown, encoding="utf-8")
         console.print(f"[green]Report written to {args.output}[/green]")
     else:
-        # Write to stdout (not stderr where Rich console goes)
-        sys.stdout.write(markdown)
-        sys.stdout.write("\n")
+        # Write to stdout as UTF-8 (Windows defaults to cp1252)
+        sys.stdout.buffer.write(markdown.encode("utf-8"))
+        sys.stdout.buffer.write(b"\n")
 
     # Print summary to stderr
     console.print(f"\n[bold]Findings:[/bold] {len(report.findings)}")
