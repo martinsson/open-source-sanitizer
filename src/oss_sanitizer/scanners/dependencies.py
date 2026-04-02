@@ -6,6 +6,8 @@ import logging
 import re
 from pathlib import Path
 
+from jinja2 import Environment, PackageLoader
+
 from ..config import Config
 from .pom_model import PomDependency, PomModel, parse as parse_pom_model
 
@@ -93,52 +95,26 @@ def find_internal_dependencies(
     return internal
 
 
+_deps_env = Environment(
+    loader=PackageLoader("oss_sanitizer", "templates"),
+    keep_trailing_newline=True,
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
+
+
 def render_dependency_report(
     internal_deps: list[PomDependency],
     repo_path: str,
 ) -> str:
     """Render the internal dependencies as a markdown section."""
-    lines: list[str] = []
+    _sort_key = lambda d: (d.group_id, d.artifact_id)
+    shipping = sorted([d for d in internal_deps if d.is_shipping], key=_sort_key)
+    non_shipping = sorted([d for d in internal_deps if not d.is_shipping], key=_sort_key)
 
-    lines.append("## Internal Dependencies")
-    lines.append("")
-    lines.append("*Dependencies whose groupId matches internal Geneva patterns (ch.ge.*, ch.etat-ge.*, etc.) "
-                 "and are not modules of the project being analyzed.*")
-    lines.append("")
-
-    if not internal_deps:
-        lines.append("> No internal dependencies found.")
-        return "\n".join(lines)
-
-    lines.append(f"**{len(internal_deps)}** internal dependencies found:")
-    lines.append("")
-
-    shipping = [d for d in internal_deps if d.is_shipping]
-    non_shipping = [d for d in internal_deps if not d.is_shipping]
-
-    if shipping:
-        lines.append(f"### Shipping dependencies ({len(shipping)})")
-        lines.append("")
-        lines.append("These must be made available publicly or mocked/documented per Charte §5 (Isolation).")
-        lines.append("")
-        lines.append("| groupId | artifactId | Version | Scope | Found in |")
-        lines.append("|---------|------------|---------|-------|----------|")
-        for dep in sorted(shipping, key=lambda d: (d.group_id, d.artifact_id)):
-            version = dep.version or "—"
-            scope = dep.scope or "compile"
-            lines.append(f"| `{dep.group_id}` | `{dep.artifact_id}` | {version} | {scope} | `{dep.pom_path}:{dep.line_number}` |")
-
-    if non_shipping:
-        lines.append("")
-        lines.append(f"### Non-shipping dependencies ({len(non_shipping)})")
-        lines.append("")
-        lines.append("These are test/provided scope — not shipped in the binary but still reveal internal infrastructure.")
-        lines.append("")
-        lines.append("| groupId | artifactId | Version | Scope | Found in |")
-        lines.append("|---------|------------|---------|-------|----------|")
-        for dep in sorted(non_shipping, key=lambda d: (d.group_id, d.artifact_id)):
-            version = dep.version or "—"
-            scope = dep.scope or "compile"
-            lines.append(f"| `{dep.group_id}` | `{dep.artifact_id}` | {version} | {scope} | `{dep.pom_path}:{dep.line_number}` |")
-
-    return "\n".join(lines)
+    template = _deps_env.get_template("dependencies.md.j2")
+    return template.render(
+        deps=internal_deps,
+        shipping=shipping,
+        non_shipping=non_shipping,
+    ).rstrip()
