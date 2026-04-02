@@ -39,6 +39,18 @@ class ScanReport:
     scan_history: bool
     findings: list[Finding] = field(default_factory=list)
     internal_dependencies: list[PomDependency] = field(default_factory=list)
+    _seen: set[tuple] = field(default_factory=set, repr=False)
+
+    def add_finding(self, finding: Finding) -> None:
+        """Add a finding, ignoring duplicates (same type/file/line/description)."""
+        key = (finding.finding_type, finding.file_path, finding.line_number, finding.description)
+        if key not in self._seen:
+            self._seen.add(key)
+            self.findings.append(finding)
+
+    def add_findings(self, findings: list[Finding]) -> None:
+        for f in findings:
+            self.add_finding(f)
 
     @property
     def total_score(self) -> float:
