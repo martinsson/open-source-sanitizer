@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from oss_sanitizer.config import Config
 from oss_sanitizer.models import FindingType
-from oss_sanitizer.scanners.algorithms import scan_content
+from oss_sanitizer.scanners.algorithms import scan_for_sensitive_algorithms as scan_content
 
 
 def test_skipped_when_score_zero():

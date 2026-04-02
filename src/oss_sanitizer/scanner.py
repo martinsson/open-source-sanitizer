@@ -82,9 +82,9 @@ def scan_working_tree(
             continue
 
         # Run all scanners
-        findings.extend(secrets.scan_content(text, file_path, config))
-        findings.extend(urls.scan_content(text, file_path, config))
-        findings.extend(algorithms.scan_content(text, file_path, config))
+        findings.extend(secrets.scan_for_secrets(text, file_path, config))
+        findings.extend(urls.scan_for_internal_references(text, file_path, config))
+        findings.extend(algorithms.scan_for_sensitive_algorithms(text, file_path, config))
 
     return findings
 
@@ -148,9 +148,9 @@ def scan_git_history(
         if len(text) > config.max_file_size_kb * 1024:
             continue
 
-        findings.extend(secrets.scan_content(text, file_path, config, commit_sha))
-        findings.extend(urls.scan_content(text, file_path, config, commit_sha))
-        findings.extend(algorithms.scan_content(text, file_path, config, commit_sha))
+        findings.extend(secrets.scan_for_secrets(text, file_path, config, commit_sha))
+        findings.extend(urls.scan_for_internal_references(text, file_path, config, commit_sha))
+        findings.extend(algorithms.scan_for_sensitive_algorithms(text, file_path, config, commit_sha))
 
     return findings
 

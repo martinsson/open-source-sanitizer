@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from oss_sanitizer.config import Config
 from oss_sanitizer.models import FindingType
-from oss_sanitizer.scanners.urls import scan_content
+from oss_sanitizer.scanners.urls import scan_for_internal_references as scan_content
 
 from .conftest import FIXTURES
 
