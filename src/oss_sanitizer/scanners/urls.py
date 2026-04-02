@@ -164,7 +164,7 @@ def _make_snippet(lines: list[str], line_idx: int) -> str:
 
 # ── Main scanner ───────────────────────────────────────────────────────
 
-def scan_content(
+def scan_for_internal_references(
     content: str,
     file_path: str,
     config: Config,

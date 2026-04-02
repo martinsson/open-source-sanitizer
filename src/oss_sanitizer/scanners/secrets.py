@@ -52,7 +52,7 @@ def _get_plugins() -> list[BasePlugin]:
     ]
 
 
-def scan_content(
+def scan_for_secrets(
     content: str,
     file_path: str,
     config: Config,

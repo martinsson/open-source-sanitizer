@@ -81,7 +81,7 @@ def _call_llm(config: Config, user_message: str) -> dict:
         return json.loads(response.choices[0].message.content)
 
 
-def scan_content(
+def scan_for_sensitive_algorithms(
     content: str,
     file_path: str,
     config: Config,
