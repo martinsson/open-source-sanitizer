@@ -120,12 +120,15 @@ def test_pom_properties_url_medium_score(config: Config):
     assert prop_findings[0].score == expected
 
 
-def test_generic_xml_not_pom_context(config: Config):
-    """A generic XML file (not pom.xml) should score URLs at XML default factor."""
+def test_generic_xml_full_score(config: Config):
+    """A generic XML file (not pom.xml) should get full score — no POM context reduction."""
     content = (FIXTURES / "sample_spring_config.xml").read_text()
     findings = scan_content(content, "applicationContext.xml", config)
     urls = [f for f in findings if f.finding_type == FindingType.INTERNAL_URL]
     assert len(urls) >= 1
+    # Full score (factor 1.0), not reduced
+    for f in urls:
+        assert f.score == config.scoring.internal_url
 
 
 # ── Properties file context ──────────────────────────────────────────
@@ -180,6 +183,104 @@ def test_sample_app_findings(config: Config):
     assert any("intranet.ge.ch" in f.description for f in urls)
     # Should find hostnames
     assert len(hostnames) >= 1
+
+
+# ── Hostname false-positive filters ─────────────────────────────────
+
+
+def test_fp_file_extension(config: Config):
+    """Matches ending with a file extension should be suppressed."""
+    for fp_text in [
+        'image = "api-cas-general.png"',
+        'file = "jenkins-env.png"',
+        'ci_config = "ci-base-jobs.yml"',
+    ]:
+        findings = scan_content(fp_text, "README.adoc", config)
+        hostnames = [f for f in findings if f.finding_type == FindingType.INTERNAL_HOSTNAME]
+        assert len(hostnames) == 0, f"Should suppress: {fp_text!r}, got: {hostnames}"
+
+
+def test_fp_maven_lifecycle(config: Config):
+    """Maven lifecycle phases should not be flagged."""
+    for term in ["integration-test", "process-test-classes", "test-jar"]:
+        findings = scan_content(f"<phase>{term}</phase>", "pom.xml", config)
+        hostnames = [f for f in findings if f.finding_type == FindingType.INTERNAL_HOSTNAME]
+        assert len(hostnames) == 0, f"Should suppress Maven term: {term!r}"
+
+
+def test_fp_maven_property_name(config: Config):
+    """Maven property names (app-utils.version) should not be flagged."""
+    content = "<app-utils.version>1.0</app-utils.version>"
+    findings = scan_content(content, "pom.xml", config)
+    hostnames = [f for f in findings if f.finding_type == FindingType.INTERNAL_HOSTNAME]
+    assert len(hostnames) == 0
+
+
+def test_fp_french_text(config: Config):
+    """French words like 'ci-dessous' should not be flagged."""
+    # ci-dessous has 'ci-' prefix but 'ci' is Tier 2 — requires a dot
+    content = "Veuillez consulter ci-dessous le tableau."
+    findings = scan_content(content, "README.md", config)
+    hostnames = [f for f in findings if f.finding_type == FindingType.INTERNAL_HOSTNAME]
+    assert len(hostnames) == 0
+
+
+def test_fp_artifact_name(config: Config):
+    """Maven artifact names like 'mapstruct-test' should not be flagged."""
+    content = "<artifactId>mapstruct-test</artifactId>"
+    findings = scan_content(content, "pom.xml", config)
+    hostnames = [f for f in findings if f.finding_type == FindingType.INTERNAL_HOSTNAME]
+    assert len(hostnames) == 0
+
+
+def test_fp_allowlist_entry(config: Config):
+    """Entries in hostname_allowlist should be suppressed (matched against the match text)."""
+    # The env suffix pattern matches "myapp-prod"; add that to suppress
+    config.patterns.hostname_allowlist.append("myapp-prod")
+    content = 'host = "myapp-prod"'
+    findings = scan_content(content, "config.yml", config)
+    hostnames = [f for f in findings if f.finding_type == FindingType.INTERNAL_HOSTNAME]
+    assert len(hostnames) == 0
+
+
+def test_tier2_prefix_without_dot_suppressed(config: Config):
+    """Tier 2 prefix without a dot (e.g. 'api-client') should NOT be flagged."""
+    content = 'dependency = "api-client"'
+    findings = scan_content(content, "app.py", config)
+    hostnames = [f for f in findings if f.finding_type == FindingType.INTERNAL_HOSTNAME]
+    assert len(hostnames) == 0
+
+
+def test_tier2_prefix_with_dot_flagged(config: Config):
+    """Tier 2 prefix with a dot (e.g. 'api-prod.internal') SHOULD be flagged."""
+    content = 'host = "api-prod.internal"'
+    findings = scan_content(content, "config.py", config)
+    hostnames = [f for f in findings if f.finding_type == FindingType.INTERNAL_HOSTNAME]
+    assert len(hostnames) >= 1
+
+
+def test_tier1_prefix_without_dot_flagged(config: Config):
+    """Tier 1 prefix (srv-, db-) should flag even without a dot."""
+    content = 'host = "srv-db01"'
+    findings = scan_content(content, "app.py", config)
+    hostnames = [f for f in findings if f.finding_type == FindingType.INTERNAL_HOSTNAME]
+    assert len(hostnames) >= 1
+
+
+def test_env_suffix_prod_flagged(config: Config):
+    """*-prod suffix should still be flagged."""
+    content = 'backend = "myapp-prod"'
+    findings = scan_content(content, "app.py", config)
+    hostnames = [f for f in findings if f.finding_type == FindingType.INTERNAL_HOSTNAME]
+    assert len(hostnames) >= 1
+
+
+def test_env_suffix_test_not_flagged(config: Config):
+    """*-test suffix should NOT be flagged (removed from default patterns)."""
+    content = 'module = "mapstruct-test"'
+    findings = scan_content(content, "app.py", config)
+    hostnames = [f for f in findings if f.finding_type == FindingType.INTERNAL_HOSTNAME]
+    assert len(hostnames) == 0
 
 
 def test_snippet_has_context(config: Config):

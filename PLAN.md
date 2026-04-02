@@ -110,13 +110,17 @@ return template.render(report=report, grouped=grouped, ...)
 
 Currently the tool tries to contact an LLM by default. `--no-llm` should be the default behavior, with an explicit `--llm` flag to opt in. This avoids surprising failures when no LLM is configured.
 
+### TODO: Replace hand-rolled secret patterns with detect-secrets
+
+The 14 regexes in `secrets.py` are a simplified subset of what `detect-secrets` already does. Re-add `detect-secrets` as a dependency and integrate it properly — use its plugin system (entropy checks, keyword detection, provider-specific patterns) instead of maintaining our own regex list. The custom plugin API also supports extending detection to other categories. Reference: NASA SLIM project (`slim-config-detect-secrets`) built custom plugins for IPs, emails, and AWS infra identifiers.
+
 ---
 
 ## Verification
 
 After each step:
 1. `uv run pytest tests/` — all golden master tests pass
-2. `uv run oss-sanitizer /tmp/test-repo --no-llm` — manual smoke test
+2. `uv run oss-sanitizer /tmp/test-repo` — manual smoke test (LLM off by default)
 3. Commit
 
 After all steps:

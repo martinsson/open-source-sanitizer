@@ -49,13 +49,34 @@ class PatternsConfig:
         ]
     )
 
-    # Hostname patterns (looks like internal infra)
+    # Hostname patterns (looks like internal infra).
+    # Tier 1 prefixes: always flag even without a dot (unambiguous infra names).
+    # Tier 2 prefixes (app/web/api/ci/git/…): only flag when the match contains
+    # a dot, making it look like a FQDN — bare words like "api-client" or
+    # "ci-dessous" are excluded.
     hostname_patterns: list[str] = field(
         default_factory=lambda: [
-            r"\b(?:srv|server|db|app|web|api|proxy|ldap|ad|dc|dns|mail|smtp|imap|ftp|nfs|nas|san|vpn|gw|fw|lb|mgmt|mon|log|bkp|ci|cd|git|svn|jenkins|nexus|sonar|jira|confluence)[-_][a-zA-Z0-9][-a-zA-Z0-9_.]*\b",
-            r"\b[a-zA-Z]+-(?:prod|staging|stage|stg|dev|test|uat|preprod|int|recette|rct|qual|qualif)\b",
-            r"\b(?:prod|staging|dev|test|uat|preprod|int|recette|rct)-[a-zA-Z][-a-zA-Z0-9]*\b",
+            # Tier 1: unambiguously infrastructure prefixes
+            r"\b(?:srv|server|db|ldap|ad|dc|dns|mail|smtp|imap|ftp|nfs|nas|san|vpn|gw|fw|lb|mgmt|mon|bkp|nexus|sonar|jira|confluence)[-_][a-zA-Z0-9][-a-zA-Z0-9_.]*\b",
+            # Tier 2: ambiguous prefixes — require a dot to suggest FQDN
+            r"\b(?:app|web|api|proxy|ci|cd|git|svn|jenkins|log)[-_][a-zA-Z0-9][-a-zA-Z0-9]*(?:\.[a-zA-Z0-9][-a-zA-Z0-9.]+)\b",
+            # Environment suffix (prod/staging/preprod/uat/recette/qual only — "test" and "int" removed)
+            r"\b[a-zA-Z]{2,}[-_](?:prod|staging|stage|stg|preprod|recette|rct|qual|qualif|uat)\b",
+            r"\b(?:prod|staging|stg|preprod|recette|rct)[-_][a-zA-Z][-a-zA-Z0-9]*\b",
+            # Private IP ranges
             r"\b(?:10|172\.(?:1[6-9]|2[0-9]|3[01])|192\.168)\.\d{1,3}\.\d{1,3}\b",
+        ]
+    )
+
+    # Exact strings or substrings to never flag as hostnames.
+    hostname_allowlist: list[str] = field(
+        default_factory=lambda: [
+            # Maven lifecycle phases
+            "process-test-classes", "pre-integration-test", "post-integration-test",
+            "test-compile", "generate-test-sources", "generate-test-resources",
+            "process-test-resources", "test-jar", "integration-test", "verify",
+            # Common Maven plugin / artifact suffix patterns
+            "-plugin", "-starter", "-autoconfigure",
         ]
     )
 
@@ -117,16 +138,20 @@ class Config:
         with open(path, encoding="utf-8-sig") as f:
             data = yaml.safe_load(f) or {}
 
+        def _merge(obj, updates: dict, section: str) -> None:
+            valid = {f.name for f in obj.__dataclass_fields__.values()}
+            for k, v in updates.items():
+                if k not in valid:
+                    raise ValueError(f"Unknown config key [{section}].{k!r}. Valid keys: {sorted(valid)}")
+                setattr(obj, k, v)
+
         config = cls()
         if "llm" in data:
-            for k, v in data["llm"].items():
-                setattr(config.llm, k, v)
+            _merge(config.llm, data["llm"], "llm")
         if "scoring" in data:
-            for k, v in data["scoring"].items():
-                setattr(config.scoring, k, v)
+            _merge(config.scoring, data["scoring"], "scoring")
         if "patterns" in data:
-            for k, v in data["patterns"].items():
-                setattr(config.patterns, k, v)
+            _merge(config.patterns, data["patterns"], "patterns")
         if "scan_history" in data:
             config.scan_history = data["scan_history"]
         if "max_file_size_kb" in data:
@@ -175,5 +200,10 @@ class Config:
             for pattern in data["hostname_patterns"]:
                 if pattern not in self.patterns.hostname_patterns:
                     self.patterns.hostname_patterns.append(pattern)
+
+        if "hostname_allowlist" in data:
+            for entry in data["hostname_allowlist"]:
+                if entry not in self.patterns.hostname_allowlist:
+                    self.patterns.hostname_allowlist.append(entry)
 
         logger.info(f"Loaded blacklist from {path}")

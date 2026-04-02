@@ -9,8 +9,8 @@ from oss_sanitizer.scanners.dependencies import (
     parse_pom,
     find_internal_dependencies,
     render_dependency_report,
-    _resolve_property,
 )
+from oss_sanitizer.scanners.pom_model import PomModel
 
 from .conftest import FIXTURES
 
@@ -66,12 +66,12 @@ def test_parse_pom_line_numbers(config: Config):
 
 def _get_internal_deps(config: Config) -> list:
     """Helper: parse our fixture pom and filter internal deps."""
+    import re
+    from oss_sanitizer.scanners.dependencies import DEFAULT_INTERNAL_GROUP_PATTERNS
     pom_path = FIXTURES / "sample_pom.xml"
     all_deps = parse_pom(pom_path, FIXTURES)
     # Simulate what find_internal_dependencies does: filter by internal patterns,
     # exclude project's own groupIds
-    import re
-    from oss_sanitizer.scanners.dependencies import DEFAULT_INTERNAL_GROUP_PATTERNS
     patterns = [re.compile(p) for p in DEFAULT_INTERNAL_GROUP_PATTERNS]
     project_gids = {"ch.ge.example"}
     seen = set()
@@ -113,12 +113,12 @@ def test_find_internal_dependencies_deduplicates(config: Config):
 
 
 def test_resolve_property():
-    props = {"my.version": "1.2.3", "project.version": "2.0.0"}
-    assert _resolve_property("${my.version}", props) == "1.2.3"
-    assert _resolve_property("${project.version}", props) == "2.0.0"
-    assert _resolve_property("literal", props) == "literal"
-    assert _resolve_property(None, props) is None
-    assert _resolve_property("${unknown}", props) == "${unknown}"
+    model = PomModel(path="pom.xml", properties={"my.version": "1.2.3", "project.version": "2.0.0"})
+    assert model.resolve_property("${my.version}") == "1.2.3"
+    assert model.resolve_property("${project.version}") == "2.0.0"
+    assert model.resolve_property("literal") == "literal"
+    assert model.resolve_property(None) is None
+    assert model.resolve_property("${unknown}") == "${unknown}"
 
 
 def test_render_dependency_report_shipping_vs_non_shipping(config: Config):
@@ -174,12 +174,12 @@ def test_find_internal_dependencies_empty_repo(config: Config, tmp_path: Path):
     assert internal == []
 
 
-def test_get_line_number():
-    from oss_sanitizer.scanners.dependencies import _get_line_number
-    pom_text = (FIXTURES / "sample_pom.xml").read_text()
-    # ge-commons should be findable
-    line = _get_line_number(pom_text, "ch.ge.common", "ge-commons")
-    assert line > 1
-    # Non-existent artifact should return 1
-    line = _get_line_number(pom_text, "no.such", "no-such-artifact")
-    assert line == 1
+def test_pom_model_line_number():
+    """PomModel should set line numbers on parsed dependencies."""
+    from oss_sanitizer.scanners.pom_model import parse as parse_model
+    pom_path = FIXTURES / "sample_pom.xml"
+    model = parse_model(pom_path, FIXTURES)
+    assert model is not None
+    commons = next((d for d in model.dependencies if d.artifact_id == "ge-commons"), None)
+    assert commons is not None
+    assert commons.line_number > 1

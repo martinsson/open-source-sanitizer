@@ -12,3 +12,6 @@ build/
 
 # Internal domains blacklist — contains sensitive infrastructure names
 internal_domains_blacklist.yaml
+.coverage
+.idea/
+.nwave/
