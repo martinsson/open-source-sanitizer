@@ -85,6 +85,10 @@ For Tier 2 prefixes, require the match to contain a dot (suggesting a FQDN) OR b
 
 This keeps `api-prod.internal` and `jenkins-01.ge.ch` but drops `api-cas-general` and `jenkins-release`.
 
+**Library support:** Use `tldextract` (PyPI) to distinguish matches ending with known public TLDs (not hostnames) from those with internal suffixes (`.internal`, `.local`, `.corp`, `.lan` — strong hostname signal). Use `fqdn` (PyPI) to validate that Tier 2 matches are structurally valid FQDNs. Both are lightweight and well-maintained.
+
+**Note:** No purpose-built hostname-in-code scanner exists (unlike detect-secrets for credentials). NASA's `slim-config-detect-secrets` project is the closest reference — custom detect-secrets plugins for IPs and AWS infrastructure identifiers. A similar custom plugin approach could work for hostname detection.
+
 ---
 
 ## Step 3: Tighten the environment suffix list
