@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "gitpython>=3.1",
-    "detect-secrets>=1.4",
     "openai>=1.0",
     "anthropic>=0.40",
     "pyyaml>=6.0",
@@ -22,6 +21,12 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/oss_sanitizer"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

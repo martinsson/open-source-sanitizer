@@ -47,7 +47,7 @@ def render_markdown(report: ScanReport) -> str:
     lines.append("# OSS Sanitizer — Compliance Report")
     lines.append("")
     lines.append(f"**Repository:** `{report.repo_path}`")
-    lines.append(f"**Date:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
+    lines.append(f"**Date:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
     lines.append(f"**History scanned:** {'Yes' if report.scan_history else 'No (working tree only)'}")
     lines.append(f"**Total findings:** {len(report.findings)}")
     lines.append(f"**Total risk score:** {report.total_score:.1f}")
