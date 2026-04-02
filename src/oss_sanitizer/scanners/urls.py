@@ -179,11 +179,17 @@ def scan_content(
     if _is_xml_file(file_path):
         xml_factors = _build_xml_score_map(content)
 
+    is_props = _is_properties_file(file_path)
+
     for line_idx, line in enumerate(lines, start=1):
+        # Skip comment lines in properties/config files
+        if is_props and line.lstrip().startswith(("#", "!", "//")):
+            continue
+
         # Determine context-based score factor (or skip)
         if xml_factors is not None:
             factor = xml_factors[line_idx - 1] if line_idx - 1 < len(xml_factors) else _XML_DEFAULT_FACTOR
-        elif _is_properties_file(file_path):
+        elif is_props:
             factor = 1.0
         else:
             factor = 1.0
@@ -222,11 +228,15 @@ def scan_content(
             for hm in hp.finditer(line):
                 hostname_matches.append((hm.start(), hm.end(), hm.group(0)))
 
-        # Remove matches that are substrings of longer matches
+        # Remove matches that are substrings of longer matches, and deduplicate
         filtered = []
+        seen_positions: set[tuple[int, str]] = set()
         for start, end, text in sorted(hostname_matches, key=lambda x: -(x[1] - x[0])):
+            if (start, text) in seen_positions:
+                continue
             if not any(s <= start and end <= e and (s, e) != (start, end) for s, e, _ in filtered):
                 filtered.append((start, end, text))
+                seen_positions.add((start, text))
 
         for start, end, hostname in filtered:
             # Skip if it's inside a URL we already flagged
