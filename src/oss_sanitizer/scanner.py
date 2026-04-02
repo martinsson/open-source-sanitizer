@@ -166,29 +166,15 @@ def scan(
 
     # Always scan working tree
     logger.info("Scanning working tree...")
-    report.findings.extend(
-        scan_working_tree(repo_path, config, progress_callback)
-    )
+    report.add_findings(scan_working_tree(repo_path, config, progress_callback))
 
     # Optionally scan history
     if config.scan_history:
         logger.info("Scanning git history...")
-        report.findings.extend(
-            scan_git_history(repo_path, config, progress_callback)
-        )
+        report.add_findings(scan_git_history(repo_path, config, progress_callback))
 
     # Scan for internal Maven dependencies
     logger.info("Scanning for internal dependencies...")
     report.internal_dependencies = dependencies.find_internal_dependencies(repo_path, config)
-
-    # Deduplicate: same file + line + type + description
-    seen = set()
-    unique = []
-    for f in report.findings:
-        key = (f.finding_type, f.file_path, f.line_number, f.description)
-        if key not in seen:
-            seen.add(key)
-            unique.append(f)
-    report.findings = unique
 
     return report
