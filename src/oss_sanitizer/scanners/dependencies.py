@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass
 from pathlib import Path
 
 from ..config import Config
-from .pom_model import PomModel, parse as parse_pom_model
+from .pom_model import PomDependency, PomModel, parse as parse_pom_model
 
 logger = logging.getLogger(__name__)
 
@@ -19,18 +18,6 @@ DEFAULT_INTERNAL_GROUP_PATTERNS = [
     r"ch\.geneve\b",
     r"ch\.gva\b",
 ]
-
-
-@dataclass
-class Dependency:
-    """A Maven dependency."""
-
-    group_id: str
-    artifact_id: str
-    version: str | None
-    scope: str | None
-    pom_path: str
-    line_number: int
 
 
 def _find_pom_files(repo_path: Path, config: Config) -> list[Path]:
@@ -44,30 +31,19 @@ def _find_pom_files(repo_path: Path, config: Config) -> list[Path]:
     return sorted(poms)
 
 
-def parse_pom(pom_path: Path, repo_path: Path) -> list[Dependency]:
+def parse_pom(pom_path: Path, repo_path: Path) -> list[PomDependency]:
     """Parse a pom.xml and extract all dependencies."""
     model = parse_pom_model(pom_path, repo_path)
     if model is None:
         return []
-
-    deps: list[Dependency] = []
-    for d in model.dependencies:
-        deps.append(Dependency(
-            group_id=d.group_id,
-            artifact_id=d.artifact_id,
-            version=d.version,
-            scope=d.scope,
-            pom_path=model.path,
-            line_number=d.line_number,
-        ))
-    return deps
+    return list(model.dependencies)
 
 
 def find_internal_dependencies(
     repo_path: Path,
     config: Config,
     project_group_ids: set[str] | None = None,
-) -> list[Dependency]:
+) -> list[PomDependency]:
     """Find all internal dependencies across all pom.xml files.
 
     A dependency is considered internal if:
@@ -98,20 +74,10 @@ def find_internal_dependencies(
 
     internal_patterns = [re.compile(p) for p in DEFAULT_INTERNAL_GROUP_PATTERNS]
 
-    # Second pass: collect internal dependencies
-    all_deps: list[Dependency] = []
-    for model in models:
-        for d in model.dependencies:
-            all_deps.append(Dependency(
-                group_id=d.group_id,
-                artifact_id=d.artifact_id,
-                version=d.version,
-                scope=d.scope,
-                pom_path=model.path,
-                line_number=d.line_number,
-            ))
+    # Collect all dependencies from all POMs, then filter to internal
+    all_deps = [d for model in models for d in model.dependencies]
 
-    internal: list[Dependency] = []
+    internal: list[PomDependency] = []
     seen: set[tuple[str, str]] = set()
     for dep in all_deps:
         if not any(p.search(dep.group_id) for p in internal_patterns):
@@ -128,7 +94,7 @@ def find_internal_dependencies(
 
 
 def render_dependency_report(
-    internal_deps: list[Dependency],
+    internal_deps: list[PomDependency],
     repo_path: str,
 ) -> str:
     """Render the internal dependencies as a markdown section."""

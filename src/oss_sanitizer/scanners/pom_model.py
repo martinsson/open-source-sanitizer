@@ -65,6 +65,7 @@ class PomDependency:
     artifact_id: str
     version: str | None
     scope: str | None
+    pom_path: str
     line_number: int
 
 
@@ -199,6 +200,7 @@ def _build_model(root: ET.Element, pom_text: str, rel_path: str) -> PomModel:
             artifact_id=artifact_id,
             version=version,
             scope=scope,
+            pom_path=rel_path,
             line_number=_line_of(group_id, artifact_id),
         ))
 
@@ -208,6 +210,7 @@ def _build_model(root: ET.Element, pom_text: str, rel_path: str) -> PomModel:
             artifact_id=model.parent_artifact_id,
             version=model.parent_version,
             scope="parent",
+            pom_path=rel_path,
             line_number=_line_of(model.parent_group_id, model.parent_artifact_id),
         ))
 

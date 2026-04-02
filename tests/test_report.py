@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from oss_sanitizer.models import Finding, FindingType, ScanReport
-from oss_sanitizer.scanners.dependencies import Dependency
+from oss_sanitizer.scanners.pom_model import PomDependency
 from oss_sanitizer.report import render_markdown
 
 
@@ -82,8 +82,8 @@ def test_render_report_with_commit_sha():
 
 def test_render_report_with_dependencies():
     deps = [
-        Dependency("ch.ge.common", "ge-commons", "1.0", None, "pom.xml", 10),
-        Dependency("ch.ge.test", "test-utils", "2.0", "test", "pom.xml", 20),
+        PomDependency("ch.ge.common", "ge-commons", "1.0", None, "pom.xml", 10),
+        PomDependency("ch.ge.test", "test-utils", "2.0", "test", "pom.xml", 20),
     ]
     # Need at least one finding for the report to render deps/footer sections
     findings = [
