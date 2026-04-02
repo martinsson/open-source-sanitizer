@@ -42,9 +42,9 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
     )
     parser.add_argument(
-        "--no-llm",
+        "--llm",
         action="store_true",
-        help="Skip LLM-based sensitive algorithm detection.",
+        help="Enable LLM-based sensitive algorithm detection (disabled by default).",
     )
     parser.add_argument(
         "-v", "--verbose",
@@ -88,9 +88,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.history:
         config.scan_history = True
 
-    # Disable LLM scanner if requested
-    if args.no_llm:
-        # Set scoring weight to 0 so the scanner is effectively skipped
+    # LLM scanner is off by default; only enable when explicitly requested
+    if not args.llm:
         config.scoring.sensitive_algorithm = 0.0
 
     # Load allowlist and blacklist

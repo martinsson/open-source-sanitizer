@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from oss_sanitizer.config import Config, LLMConfig, ScoringWeights, PatternsConfig
+from oss_sanitizer.config import Config
 
 
 def test_default_config():
@@ -129,6 +129,16 @@ def test_load_blacklist_no_duplicates():
         config.load_blacklist(Path(f.name))
 
     assert len(config.patterns.internal_url_domains) == count_before
+
+
+def test_from_yaml_rejects_unknown_key():
+    """I1: Unknown YAML keys should raise an error, not silently set bogus attrs."""
+    data = {"scoring": {"typo_weight": 5.0}}
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+        yaml.dump(data, f)
+        f.flush()
+        with pytest.raises(ValueError, match="typo_weight"):
+            Config.from_yaml(Path(f.name))
 
 
 def test_load_blacklist_nonexistent():

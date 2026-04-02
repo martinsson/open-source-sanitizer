@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from jinja2 import Environment, PackageLoader, select_autoescape
+
 from .models import FindingType, ScanReport
 from .scanners.dependencies import render_dependency_report
 
@@ -21,14 +23,21 @@ TYPE_ORDER = [
     FindingType.SENSITIVE_ALGORITHM,
 ]
 
+_env = Environment(
+    loader=PackageLoader("oss_sanitizer", "templates"),
+    autoescape=select_autoescape([]),
+    keep_trailing_newline=True,
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
 
-def _render_summary_table(grouped: dict, heading: str = "## Summary") -> list[str]:
-    """Render the summary table as markdown lines."""
-    lines: list[str] = []
-    lines.append(heading)
-    lines.append("")
-    lines.append("| Category | Count | Score |")
-    lines.append("|----------|------:|------:|")
+
+def _summary_table(grouped: dict, heading: str = "## Summary") -> str:
+    lines = [
+        heading, "",
+        "| Category | Count | Score |",
+        "|----------|------:|------:|",
+    ]
     for ftype in TYPE_ORDER:
         label, _ = TYPE_LABELS[ftype]
         items = grouped.get(ftype, [])
@@ -37,81 +46,32 @@ def _render_summary_table(grouped: dict, heading: str = "## Summary") -> list[st
     total_findings = sum(len(grouped.get(ft, [])) for ft in TYPE_ORDER)
     total_score = sum(sum(f.score for f in grouped.get(ft, [])) for ft in TYPE_ORDER)
     lines.append(f"| **Total** | **{total_findings}** | **{total_score:.1f}** |")
-    return lines
+    return "\n".join(lines)
 
 
 def render_markdown(report: ScanReport) -> str:
     """Render a ScanReport as a Markdown document."""
-    lines: list[str] = []
-
-    lines.append("# OSS Sanitizer — Compliance Report")
-    lines.append("")
-    lines.append(f"**Repository:** `{report.repo_path}`")
-    lines.append(f"**Date:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
-    lines.append(f"**History scanned:** {'Yes' if report.scan_history else 'No (working tree only)'}")
-    lines.append(f"**Total findings:** {len(report.findings)}")
-    lines.append(f"**Total risk score:** {report.total_score:.1f}")
-    lines.append("")
-
-    # Summary table
     grouped = report.findings_by_type()
-    lines.extend(_render_summary_table(grouped))
-
-    lines.append("")
-
-    if not report.findings:
-        lines.append("> **No findings.** The repository appears compliant with the Geneva Open Source Charter §2 (Confidentialité).")
-        return "\n".join(lines)
-
-    # Detailed findings by type
-    lines.append("---")
-    lines.append("")
-
-    for ftype in TYPE_ORDER:
-        items = grouped.get(ftype, [])
-        if not items:
+    template = _env.get_template("report.md.j2")
+    result = template.render(
+        report=report,
+        now=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        grouped=grouped,
+        type_order=TYPE_ORDER,
+        labels=TYPE_LABELS,
+        summary_table=_summary_table,
+        deps_report=render_dependency_report(report.internal_dependencies, report.repo_path)
+        if report.internal_dependencies else "",
+    )
+    # Strip trailing whitespace on each line for clean output
+    lines = [line.rstrip() for line in result.splitlines()]
+    # Remove consecutive blank lines (Jinja block tags can produce them)
+    cleaned: list[str] = []
+    prev_blank = False
+    for line in lines:
+        is_blank = not line.strip()
+        if is_blank and prev_blank:
             continue
-
-        label, description = TYPE_LABELS[ftype]
-        lines.append(f"## {label}")
-        lines.append("")
-        lines.append(f"*{description}*")
-        lines.append("")
-
-        for idx, finding in enumerate(items, 1):
-            lines.append(f"### {idx}. {finding.description}")
-            lines.append("")
-            lines.append(f"- **File:** `{finding.file_path}`")
-            lines.append(f"- **Line:** {finding.line_number}")
-            lines.append(f"- **Score:** {finding.score:.1f}")
-            if finding.commit_sha:
-                lines.append(f"- **Last seen in commit:** `{finding.commit_sha[:12]}`")
-            lines.append("")
-            lines.append(f"**Why:** {finding.explanation}")
-            lines.append("")
-            lines.append("```")
-            lines.append(finding.snippet)
-            lines.append("```")
-            lines.append("")
-
-    # Internal dependencies section
-    if report.internal_dependencies:
-        lines.append("---")
-        lines.append("")
-        lines.append(render_dependency_report(report.internal_dependencies, report.repo_path))
-        lines.append("")
-
-    # Bottom summary (repeat for easy access after reading findings)
-    if report.findings:
-        lines.append("---")
-        lines.append("")
-        lines.extend(_render_summary_table(grouped, heading="## Summary (repeat)"))
-        lines.append("")
-
-    # Footer
-    lines.append("---")
-    lines.append("")
-    lines.append("*Report generated by [oss-sanitizer](https://github.com/republique-et-canton-de-geneve/open-source-sanitizer) "
-                  "— compliance checks based on the [Charte Open Source](https://github.com/republique-et-canton-de-geneve/strategie-open-source/blob/main/charte_open_source.md).*")
-
-    return "\n".join(lines)
+        cleaned.append(line)
+        prev_blank = is_blank
+    return "\n".join(cleaned).rstrip() + "\n"
