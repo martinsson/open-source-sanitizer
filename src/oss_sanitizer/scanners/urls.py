@@ -67,65 +67,75 @@ _MARKUP_ANCHOR = re.compile(
 _INTERNAL_TLDS = {"internal", "local", "corp", "lan", "intranet", "home", "localdomain"}
 
 
-def _is_false_positive_hostname(text: str, line: str, match_end: int, allowlist: list[str]) -> bool:
-    """Return True if the matched text is almost certainly not a hostname."""
+def _matches_allowlist(text: str, allowlist: list[str]) -> bool:
+    """Exact substring or regex match against the hostname allowlist."""
     lower = text.lower()
-
-    # 1. Allowlist: exact match or substring
     for entry in allowlist:
         if entry.startswith("^") or entry.endswith("$"):
             if re.search(entry, lower):
                 return True
-        else:
-            if entry in lower:
-                return True
-
-    # 2. File extension: match ends with a known non-hostname extension
-    for ext in _NON_HOSTNAME_EXTENSIONS:
-        if lower.endswith(ext):
+        elif entry in lower:
             return True
+    return False
 
-    # 3. Maven property reference: the match itself or what follows ends with
-    #    .version, .groupId, etc.
+
+def _looks_like_file_reference(text: str) -> bool:
+    """The matched text ends with a known file extension, not a hostname."""
+    lower = text.lower()
+    return any(lower.endswith(ext) for ext in _NON_HOSTNAME_EXTENSIONS)
+
+
+def _looks_like_maven_property(text: str, line: str, match_end: int) -> bool:
+    """The match is a Maven property name (e.g. app-utils.version), not a hostname."""
     if _MAVEN_PROPERTY_SUFFIXES.search(text):
         return True
     remainder = line[match_end:]
-    if _MAVEN_PROPERTY_SUFFIXES.match(remainder):
-        return True
+    return bool(_MAVEN_PROPERTY_SUFFIXES.match(remainder))
 
-    # 4. Markup anchor context: match is preceded by anchor syntax
-    prefix = line[:match_end - len(text)]
-    if _MARKUP_ANCHOR.search(prefix[-30:] if len(prefix) > 30 else prefix):
-        return True
 
-    # 5. For dotted matches, check if the TLD is a known public TLD.
-    #    A hostname like "api-prod.ge.ch" has a public TLD — it could be internal
-    #    infra on a public domain, so we keep it. But "mapstruct-test.com" would
-    #    only match if it contained a dot, and tldextract would classify it.
-    #    We use tldextract to reject matches whose suffix is a known public TLD
-    #    AND whose registered domain looks like a library/artifact name.
-    if "." in text:
-        extracted = tldextract.extract(text)
-        suffix = extracted.suffix.lower() if extracted.suffix else ""
-        domain = extracted.domain.lower() if extracted.domain else ""
+def _inside_markup_anchor(line: str, match_start: int) -> bool:
+    """The match is preceded by anchor/link syntax ([[, <<, id=, href=#)."""
+    prefix = line[:match_start]
+    return bool(_MARKUP_ANCHOR.search(prefix[-30:] if len(prefix) > 30 else prefix))
 
-        # If suffix is an internal TLD, this is definitely a hostname — keep it
-        if suffix in _INTERNAL_TLDS:
-            return False
 
-        # If suffix is a known public TLD, validate the full FQDN structure
-        if suffix and suffix not in _INTERNAL_TLDS:
-            # Reject if the domain part itself looks like an artifact name
-            # (contains a known Maven/package keyword but no numeric component)
-            artifact_keywords = {"test", "plugin", "starter", "autoconfigure",
-                                  "connector", "adapter", "helper", "util", "utils",
-                                  "commons", "core", "api", "impl", "mock", "stub"}
-            if domain in artifact_keywords or any(domain.endswith(f"-{k}") or
-                                                   domain.startswith(f"{k}-")
-                                                   for k in artifact_keywords):
-                return True
+_ARTIFACT_KEYWORDS = frozenset({
+    "test", "plugin", "starter", "autoconfigure", "connector", "adapter",
+    "helper", "util", "utils", "commons", "core", "api", "impl", "mock", "stub",
+})
+
+
+def _looks_like_artifact_name(text: str) -> bool:
+    """A dotted match whose TLD is public and whose domain looks like a library name."""
+    if "." not in text:
+        return False
+    extracted = tldextract.extract(text)
+    suffix = extracted.suffix.lower() if extracted.suffix else ""
+    domain = extracted.domain.lower() if extracted.domain else ""
+
+    # Internal TLD — definitely a hostname, not an artifact
+    if suffix in _INTERNAL_TLDS:
+        return False
+
+    if suffix:
+        if domain in _ARTIFACT_KEYWORDS:
+            return True
+        if any(domain.endswith(f"-{k}") or domain.startswith(f"{k}-")
+               for k in _ARTIFACT_KEYWORDS):
+            return True
 
     return False
+
+
+def _is_false_positive_hostname(text: str, line: str, match_start: int, match_end: int, allowlist: list[str]) -> bool:
+    """Return True if the matched text is almost certainly not a hostname."""
+    return (
+        _matches_allowlist(text, allowlist)
+        or _looks_like_file_reference(text)
+        or _looks_like_maven_property(text, line, match_end)
+        or _inside_markup_anchor(line, match_start)
+        or _looks_like_artifact_name(text)
+    )
 
 
 # ── Compiled pattern cache ─────────────────────────────────────────────
@@ -241,7 +251,7 @@ def scan_content(
                 continue
 
             # Apply false-positive filters
-            if _is_false_positive_hostname(hostname, line, end, hostname_allowlist):
+            if _is_false_positive_hostname(hostname, line, start, end, hostname_allowlist):
                 continue
 
             score = config.scoring.internal_hostname * factor
