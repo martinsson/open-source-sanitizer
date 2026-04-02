@@ -103,7 +103,7 @@ def scan_git_history(
     blob_map: dict[str, tuple[str, str]] = {}  # blob_sha -> (path, commit_sha)
 
     logger.info("Building blob map from git history...")
-    commits = list(repo.iter_commits("--all"))
+    commits = sorted(repo.iter_commits("--all"), key=lambda c: c.committed_date, reverse=True)
     total_commits = len(commits)
 
     for commit_idx, commit in enumerate(commits):

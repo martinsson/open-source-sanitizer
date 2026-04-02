@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ch.ge.example</groupId>
+        <artifactId>example-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <groupId>ch.ge.example</groupId>
+    <artifactId>example-app</artifactId>
+    <version>2.3.1</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <java.version>17</java.version>
+        <spring.version>3.2.0</spring.version>
+        <internal.lib.version>4.5.0</internal.lib.version>
+        <app.server.url>https://app.etat-ge.ch/api</app.server.url>
+        <db.hostname>srv-db02.internal</db.hostname>
+    </properties>
+
+    <scm>
+        <connection>scm:git:https://git.etat-ge.ch/dsi/example-app.git</connection>
+        <developerConnection>scm:git:ssh://git.etat-ge.ch/dsi/example-app.git</developerConnection>
+        <url>https://git.etat-ge.ch/dsi/example-app</url>
+    </scm>
+
+    <repositories>
+        <repository>
+            <id>internal-repo</id>
+            <url>https://nexus.etat-ge.ch/repository/maven-public/</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <!-- Internal dependency (should be flagged) -->
+        <dependency>
+            <groupId>ch.ge.common</groupId>
+            <artifactId>ge-commons</artifactId>
+            <version>${internal.lib.version}</version>
+        </dependency>
+
+        <!-- Another internal dep with different group -->
+        <dependency>
+            <groupId>ch.etat-ge.security</groupId>
+            <artifactId>gina-connector</artifactId>
+            <version>3.1.0</version>
+        </dependency>
+
+        <!-- External dependency (should NOT be flagged as internal) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <version>${spring.version}</version>
+        </dependency>
+
+        <!-- Test scope internal dep -->
+        <dependency>
+            <groupId>ch.ge.testing</groupId>
+            <artifactId>test-helpers</artifactId>
+            <version>1.0.0</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Own module (should be excluded from internal deps) -->
+        <dependency>
+            <groupId>ch.ge.example</groupId>
+            <artifactId>example-utils</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+</project>

@@ -245,13 +245,34 @@ def render_dependency_report(
     lines.append("| groupId | artifactId | Version | Scope | Found in |")
     lines.append("|---------|------------|---------|-------|----------|")
 
-    for dep in sorted(internal_deps, key=lambda d: (d.group_id, d.artifact_id)):
-        version = dep.version or "—"
-        scope = dep.scope or "compile"
-        lines.append(f"| `{dep.group_id}` | `{dep.artifact_id}` | {version} | {scope} | `{dep.pom_path}:{dep.line_number}` |")
+    NON_SHIPPING_SCOPES = {"test", "provided", "system"}
+    shipping = [d for d in internal_deps if (d.scope or "compile") not in NON_SHIPPING_SCOPES]
+    non_shipping = [d for d in internal_deps if (d.scope or "compile") in NON_SHIPPING_SCOPES]
 
-    lines.append("")
-    lines.append("These dependencies will need to be made available (published to a public repository) "
-                 "or mocked/documented as limitations per Charte §5 (Isolation).")
+    if shipping:
+        lines.append(f"### Shipping dependencies ({len(shipping)})")
+        lines.append("")
+        lines.append("These must be made available publicly or mocked/documented per Charte §5 (Isolation).")
+        lines.append("")
+        lines.append("| groupId | artifactId | Version | Scope | Found in |")
+        lines.append("|---------|------------|---------|-------|----------|")
+        for dep in sorted(shipping, key=lambda d: (d.group_id, d.artifact_id)):
+            version = dep.version or "—"
+            scope = dep.scope or "compile"
+            lines.append(f"| `{dep.group_id}` | `{dep.artifact_id}` | {version} | {scope} | `{dep.pom_path}:{dep.line_number}` |")
+
+    if non_shipping:
+        lines.append("")
+        lines.append(f"### Non-shipping dependencies ({len(non_shipping)})")
+        lines.append("")
+        lines.append("These are test/provided scope — not shipped in the binary but still reveal internal infrastructure.")
+        lines.append("")
+        lines.append("| groupId | artifactId | Version | Scope | Found in |")
+        lines.append("|---------|------------|---------|-------|----------|")
+        for dep in sorted(non_shipping, key=lambda d: (d.group_id, d.artifact_id)):
+            version = dep.version or "—"
+            scope = dep.scope or "compile"
+            lines.append(f"| `{dep.group_id}` | `{dep.artifact_id}` | {version} | {scope} | `{dep.pom_path}:{dep.line_number}` |")
+
 
     return "\n".join(lines)

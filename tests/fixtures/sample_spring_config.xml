@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans">
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">
+        <property name="url" value="jdbc:postgresql://srv-db01.etat-ge.ch:5432/mydb"/>
+        <property name="username" value="app_user"/>
+    </bean>
+    <bean id="serviceEndpoint" class="ch.ge.example.ServiceConfig">
+        <property name="endpoint" value="https://api.etat-ge.ch/v2/service"/>
+    </bean>
+</beans>

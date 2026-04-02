@@ -139,55 +139,36 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _print_sample_config():
-    print("""\
-# oss-sanitizer configuration
-# Save as oss-sanitizer.yaml and pass with -c flag
-
-llm:
-  base_url: "http://localhost:11434/v1"  # OpenAI-compatible endpoint
-  api_key: "unused"                       # API key if required
-  model: "llama3"                         # Model name
-  max_tokens: 1024
-  temperature: 0.1
-
-scoring:
-  secret: 10.0              # Weight for secret findings
-  internal_url: 7.0         # Weight for internal URL findings
-  internal_hostname: 6.0    # Weight for internal hostname findings
-  sensitive_algorithm: 8.0  # Weight for sensitive algorithm findings
-
-patterns:
-  internal_url_domains:
-    - "\\\\.etat-ge\\\\.ch"
-    - "\\\\.ge\\\\.ch"
-    - "\\\\.geneve\\\\.ch"
-    - "\\\\.gva\\\\.ch"
-    - "\\\\.admin\\\\.ch"
-
-  hostname_patterns:
-    - "\\\\b(?:srv|server|db|app|web|api|proxy|ldap)[-_][a-zA-Z0-9][-a-zA-Z0-9_.]*\\\\b"
-    - "\\\\b[a-zA-Z]+-(?:prod|staging|dev|test|uat|preprod|int|recette)\\\\b"
-    - "\\\\b(?:10|172\\\\.(?:1[6-9]|2[0-9]|3[01])|192\\\\.168)\\\\.\\\\d{1,3}\\\\.\\\\d{1,3}\\\\b"
-
-  url_allowlist:
-    - "https?://(?:www\\\\.)?github\\\\.com"
-    - "https?://(?:www\\\\.)?opensource\\\\.org"
-    - "https?://(?:www\\\\.)?creativecommons\\\\.org"
-    - "https?://(?:www\\\\.)?apache\\\\.org"
-
-  skip_extensions:
-    - ".png"
-    - ".jpg"
-    - ".zip"
-    - ".lock"
-
-  skip_paths:
-    - ".git/"
-    - "node_modules/"
-    - "__pycache__/"
-
-max_file_size_kb: 512
-""")
+    """Print a sample YAML configuration file."""
+    config = Config()
+    data = {
+        "llm": {
+            "base_url": config.llm.base_url,
+            "api_key": config.llm.api_key,
+            "model": config.llm.model,
+            "max_tokens": config.llm.max_tokens,
+            "temperature": config.llm.temperature,
+        },
+        "scoring": {
+            "secret": config.scoring.secret,
+            "internal_url": config.scoring.internal_url,
+            "internal_hostname": config.scoring.internal_hostname,
+            "sensitive_algorithm": config.scoring.sensitive_algorithm,
+        },
+        "patterns": {
+            "internal_url_domains": config.patterns.internal_url_domains,
+            "hostname_patterns": config.patterns.hostname_patterns,
+            "url_allowlist": config.patterns.url_allowlist[:4],  # Just the core ones
+            "skip_extensions": [".png", ".jpg", ".zip", ".lock"],
+            "skip_paths": [".git/", "node_modules/", "__pycache__/"],
+        },
+        "max_file_size_kb": config.max_file_size_kb,
+    }
+    import yaml
+    print("# oss-sanitizer configuration")
+    print("# Save as oss-sanitizer.yaml and pass with -c flag")
+    print()
+    print(yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True), end="")
 
 
 if __name__ == "__main__":
