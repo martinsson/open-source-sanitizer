@@ -128,18 +128,19 @@ def _is_false_positive_hostname(text: str, line: str, match_end: int, allowlist:
     return False
 
 
-# ── Helpers ────────────────────────────────────────────────────────────
+# ── Compiled pattern cache ─────────────────────────────────────────────
+#
+# Patterns are derived from Config, which doesn't change during a scan.
+# Compiling once and reusing avoids re-creating regex objects per file.
 
-def _build_allowlist(config: Config) -> list[re.Pattern]:
-    return [re.compile(p) for p in config.patterns.url_allowlist]
-
-
-def _build_internal_domain_patterns(config: Config) -> list[re.Pattern]:
-    return [re.compile(p) for p in config.patterns.internal_url_domains]
+_pattern_cache: dict[tuple, list[re.Pattern]] = {}
 
 
-def _build_hostname_patterns(config: Config) -> list[re.Pattern]:
-    return [re.compile(p) for p in config.patterns.hostname_patterns]
+def _compile_patterns(raw: list[str]) -> list[re.Pattern]:
+    key = tuple(raw)
+    if key not in _pattern_cache:
+        _pattern_cache[key] = [re.compile(p) for p in raw]
+    return _pattern_cache[key]
 
 
 def _make_snippet(lines: list[str], line_idx: int) -> str:
@@ -163,9 +164,9 @@ def scan_content(
     """Scan for internal URLs and hostnames."""
     findings: list[Finding] = []
     lines = content.splitlines()
-    allowlist = _build_allowlist(config)
-    internal_domains = _build_internal_domain_patterns(config)
-    hostname_patterns = _build_hostname_patterns(config)
+    allowlist = _compile_patterns(config.patterns.url_allowlist)
+    internal_domains = _compile_patterns(config.patterns.internal_url_domains)
+    hostname_patterns = _compile_patterns(config.patterns.hostname_patterns)
     hostname_allowlist = config.patterns.hostname_allowlist
 
     # For pom.xml: use PomModel for context-aware per-line scoring.
