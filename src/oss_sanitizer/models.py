@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .scanners.pom_model import PomDependency
 
 
 class FindingType(Enum):
@@ -34,7 +38,7 @@ class ScanReport:
     repo_path: str
     scan_history: bool
     findings: list[Finding] = field(default_factory=list)
-    internal_dependencies: list = field(default_factory=list)  # list[Dependency]
+    internal_dependencies: list[PomDependency] = field(default_factory=list)
 
     @property
     def total_score(self) -> float:
