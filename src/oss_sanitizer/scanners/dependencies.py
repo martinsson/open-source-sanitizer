@@ -113,9 +113,8 @@ def render_dependency_report(
     lines.append(f"**{len(internal_deps)}** internal dependencies found:")
     lines.append("")
 
-    NON_SHIPPING_SCOPES = {"test", "provided", "system"}
-    shipping = [d for d in internal_deps if (d.scope or "compile") not in NON_SHIPPING_SCOPES]
-    non_shipping = [d for d in internal_deps if (d.scope or "compile") in NON_SHIPPING_SCOPES]
+    shipping = [d for d in internal_deps if d.is_shipping]
+    non_shipping = [d for d in internal_deps if not d.is_shipping]
 
     if shipping:
         lines.append(f"### Shipping dependencies ({len(shipping)})")
