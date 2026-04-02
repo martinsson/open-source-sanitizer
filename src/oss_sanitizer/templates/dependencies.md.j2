@@ -1,0 +1,33 @@
+## Internal Dependencies
+
+*Dependencies whose groupId matches internal Geneva patterns (ch.ge.*, ch.etat-ge.*, etc.) and are not modules of the project being analyzed.*
+
+{% if not deps %}
+> No internal dependencies found.
+{% else %}
+**{{ deps | length }}** internal dependencies found:
+
+{% if shipping %}
+### Shipping dependencies ({{ shipping | length }})
+
+These must be made available publicly or mocked/documented per Charte §5 (Isolation).
+
+| groupId | artifactId | Version | Scope | Found in |
+|---------|------------|---------|-------|----------|
+{% for dep in shipping %}
+| `{{ dep.group_id }}` | `{{ dep.artifact_id }}` | {{ dep.version or "—" }} | {{ dep.scope or "compile" }} | `{{ dep.pom_path }}:{{ dep.line_number }}` |
+{% endfor %}
+{% endif %}
+{% if non_shipping %}
+
+### Non-shipping dependencies ({{ non_shipping | length }})
+
+These are test/provided scope — not shipped in the binary but still reveal internal infrastructure.
+
+| groupId | artifactId | Version | Scope | Found in |
+|---------|------------|---------|-------|----------|
+{% for dep in non_shipping %}
+| `{{ dep.group_id }}` | `{{ dep.artifact_id }}` | {{ dep.version or "—" }} | {{ dep.scope or "compile" }} | `{{ dep.pom_path }}:{{ dep.line_number }}` |
+{% endfor %}
+{% endif %}
+{% endif %}
