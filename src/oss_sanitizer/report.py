@@ -49,14 +49,30 @@ def _summary_table(grouped: dict, heading: str = "## Summary") -> str:
     return "\n".join(lines)
 
 
+def _group_by_file(findings: list) -> list[tuple[str, list]]:
+    """Group findings by file path, preserving insertion order."""
+    by_file: dict[str, list] = {}
+    for f in findings:
+        by_file.setdefault(f.file_path, []).append(f)
+    return list(by_file.items())
+
+
 def render_markdown(report: ScanReport) -> str:
     """Render a ScanReport as a Markdown document."""
     grouped = report.findings_by_type()
+
+    # Pre-group each finding type by file for the template
+    grouped_by_file = {
+        ftype: _group_by_file(items)
+        for ftype, items in grouped.items()
+    }
+
     template = _env.get_template("report.md.j2")
     result = template.render(
         report=report,
         now=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         grouped=grouped,
+        grouped_by_file=grouped_by_file,
         type_order=TYPE_ORDER,
         labels=TYPE_LABELS,
         summary_table=_summary_table,

@@ -15,27 +15,27 @@
 
 {% for ftype in type_order %}
 {% set items = grouped.get(ftype, []) %}
+{% set file_groups = grouped_by_file.get(ftype, []) %}
 {% if items %}
 ## {{ labels[ftype][0] }}
 
 *{{ labels[ftype][1] }}*
 
-{% for finding in items %}
-### {{ loop.index }}. {{ finding.description }}
+{% for file_path, findings in file_groups %}
+### `{{ file_path }}`
 
-- **File:** `{{ finding.file_path }}`
-- **Line:** {{ finding.line_number }}
-- **Score:** {{ "%.1f" | format(finding.score) }}
-{% if finding.commit_sha %}
-- **Last seen in commit:** `{{ finding.commit_sha[:12] }}`
+{% for finding in findings %}
+- **Line {{ finding.line_number }}** — {{ finding.description }} (score: {{ "%.1f" | format(finding.score) }})
+{% if finding.commit_sha %}  *Last seen in commit:* `{{ finding.commit_sha[:12] }}`
 {% endif %}
-
-**Why:** {{ finding.explanation }}
+{% if finding.explanation and "(reduced confidence" in finding.explanation %}  *{{ finding.explanation }}*
+{% endif %}
 
 ```
 {{ finding.snippet }}
 ```
 
+{% endfor %}
 {% endfor %}
 {% endif %}
 {% endfor %}

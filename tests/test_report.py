@@ -57,14 +57,13 @@ def test_render_report_with_findings():
     assert "| Secrets & Credentials | 1 |" in md
     assert "| Internal URLs | 1 |" in md
 
-    # Detailed sections
+    # Detailed sections grouped by file
     assert "## Secrets & Credentials" in md
     assert "## Internal URLs" in md
     assert "API key found" in md
-    assert "**File:** `app.py`" in md
-    assert "**Line:** 10" in md
-    assert "**Score:** 10.0" in md
-    assert "**Why:** Remove secrets per Charte §2" in md
+    assert "### `app.py`" in md
+    assert "**Line 10**" in md
+    assert "score: 10.0" in md
 
     # Bottom summary (repeated)
     assert "## Summary (repeat)" in md
