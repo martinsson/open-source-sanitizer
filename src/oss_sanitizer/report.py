@@ -8,6 +8,7 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 
 from .models import FindingType, ScanReport
 from .scanners.dependencies import render_dependency_report
+from .version import get_version, get_commit
 
 TYPE_LABELS = {
     FindingType.SECRET: ("Secrets & Credentials", "Hardcoded secrets, API keys, passwords, tokens, and private keys."),
@@ -67,10 +68,15 @@ def render_markdown(report: ScanReport) -> str:
         for ftype, items in grouped.items()
     }
 
+    tool_version = get_version()
+    tool_commit = get_commit()
+
     template = _env.get_template("report.md.j2")
     result = template.render(
         report=report,
         now=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        tool_version=tool_version,
+        tool_commit=tool_commit,
         grouped=grouped,
         grouped_by_file=grouped_by_file,
         type_order=TYPE_ORDER,
