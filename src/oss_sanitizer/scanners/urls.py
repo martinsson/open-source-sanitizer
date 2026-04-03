@@ -14,7 +14,7 @@ from .pom_model import parse as parse_pom_file, parse_from_text as parse_pom_tex
 
 # General URL pattern
 URL_PATTERN = re.compile(
-    r"https?://[a-zA-Z0-9][-a-zA-Z0-9_.]*(?::\d+)?(?:/[^\s'\")>\]]*)?",
+    r"https?://[a-zA-Z0-9][-a-zA-Z0-9_.]*(?::\d+)?(?:/[^\s'\")><\]]*)?",
 )
 
 
