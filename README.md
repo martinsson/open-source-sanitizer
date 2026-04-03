@@ -25,7 +25,27 @@ Scans a Git repository before open-source publication and reports:
 
 ## Installation
 
-The recommended way is [uv](https://docs.astral.sh/uv/), a fast Python package manager:
+### Option 1: Download the wheel from GitHub Releases (recommended)
+
+Go to the [Releases page](https://github.com/republique-et-canton-de-geneve/open-source-sanitizer/releases), download the `.whl` file from the latest release, then install it:
+
+**Linux / macOS / WSL:**
+
+```bash
+pip install oss_sanitizer-0.1.0-py3-none-any.whl
+```
+
+**Windows (PowerShell):**
+
+```powershell
+pip install oss_sanitizer-0.1.0-py3-none-any.whl
+```
+
+After installation the `oss-sanitizer` command is available in your terminal.
+
+### Option 2: Install from source with uv
+
+[uv](https://docs.astral.sh/uv/) is a fast Python package manager:
 
 ```bash
 # Install uv (see https://docs.astral.sh/uv/getting-started/installation/)
@@ -39,7 +59,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 uv tool install git+https://github.com/republique-et-canton-de-geneve/open-source-sanitizer
 ```
 
-Alternatively, with plain pip:
+### Option 3: Install from source with pip
 
 ```bash
 pip install git+https://github.com/republique-et-canton-de-geneve/open-source-sanitizer
