@@ -10,7 +10,7 @@ import tldextract
 
 from ..config import Config
 from ..models import Finding, FindingType
-from .pom_model import parse as parse_pom_file, parse_from_text as parse_pom_text
+from .pom.model import parse as parse_pom_file, parse_from_text as parse_pom_text
 
 # General URL pattern
 URL_PATTERN = re.compile(

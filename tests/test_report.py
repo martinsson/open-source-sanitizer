@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from oss_sanitizer.models import Finding, FindingType, ScanReport
-from oss_sanitizer.scanners.pom_model import PomDependency
+from oss_sanitizer.scanners.pom import PomDependency
 from oss_sanitizer.report import render_markdown
 
 

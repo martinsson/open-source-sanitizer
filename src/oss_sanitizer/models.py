@@ -7,7 +7,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .scanners.pom_model import PomDependency
+    from .scanners.pom.model import PomDependency
 
 
 class FindingType(Enum):
