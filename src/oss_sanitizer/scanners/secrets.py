@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from functools import lru_cache
 
 from detect_secrets.plugins.artifactory import ArtifactoryDetector
@@ -33,13 +34,20 @@ FALSE_POSITIVE_PATHS = [
 ]
 
 
+@dataclass
+class _SecretCtx:
+    lines: list[str]
+    file_path: str
+    weight: float
+    commit_sha: str | None
+
+
 def is_false_positive_path(path: str) -> bool:
     return any(re.search(p, path) for p in FALSE_POSITIVE_PATHS)
 
 
 @lru_cache(maxsize=1)
 def _get_plugins() -> list[BasePlugin]:
-    """Instantiate and cache all detect-secrets plugins."""
     return [
         AWSKeyDetector(),
         ArtifactoryDetector(),
@@ -56,23 +64,38 @@ def _get_plugins() -> list[BasePlugin]:
     ]
 
 
-def _build_secret_finding(secret, line_idx, lines, file_path, weight, commit_sha) -> Finding:
+def _build_secret_finding(secret, line_idx: int, ctx: _SecretCtx) -> Finding:
     start = max(0, line_idx - 3)
-    end = min(len(lines), line_idx + 2)
-    snippet = "\n".join(f"{start + i + 1:>4} | {l}" for i, l in enumerate(lines[start:end]))
+    end = min(len(ctx.lines), line_idx + 2)
+    snippet = "\n".join(f"{start + i + 1:>4} | {l}" for i, l in enumerate(ctx.lines[start:end]))
     if secret.secret_value and len(secret.secret_value) > 8:
         masked = secret.secret_value[:4] + "..." + secret.secret_value[-4:]
         snippet = snippet.replace(secret.secret_value, masked)
     return Finding(
         finding_type=FindingType.SECRET,
         description=secret.type,
-        file_path=file_path,
+        file_path=ctx.file_path,
         line_number=line_idx,
-        score=MAX_SECRET_SCORE * weight,
+        score=MAX_SECRET_SCORE * ctx.weight,
         snippet=snippet,
         explanation=f"Pattern matched: {secret.type}. Secrets must be removed per Charte §2 (Confidentialité).",
-        commit_sha=commit_sha,
+        commit_sha=ctx.commit_sha,
     )
+
+
+def _scan_lines(ctx: _SecretCtx, plugins: list[BasePlugin]) -> list[Finding]:
+    findings: list[Finding] = []
+    seen_lines: set[int] = set()
+    for line_idx, line in enumerate(ctx.lines, start=1):
+        if line_idx in seen_lines:
+            continue
+        for plugin in plugins:
+            results = list(plugin.analyze_line(filename=ctx.file_path, line=line, line_number=line_idx))
+            if results:
+                findings.append(_build_secret_finding(results[0], line_idx, ctx))
+                seen_lines.add(line_idx)
+                break
+    return findings
 
 
 def scan_for_secrets(
@@ -84,22 +107,10 @@ def scan_for_secrets(
     """Scan file content for secrets using detect-secrets plugins."""
     if is_false_positive_path(file_path):
         return []
-
-    lines = content.splitlines()
-    plugins = _get_plugins()
-    weight = config.scoring.secret / SECRET_WEIGHT_DENOMINATOR
-    findings: list[Finding] = []
-    seen_lines: set[int] = set()
-
-    for line_idx, line in enumerate(lines, start=1):
-        if line_idx in seen_lines:
-            continue
-        for plugin in plugins:
-            results = list(plugin.analyze_line(filename=file_path, line=line, line_number=line_idx))
-            if not results:
-                continue
-            findings.append(_build_secret_finding(results[0], line_idx, lines, file_path, weight, commit_sha))
-            seen_lines.add(line_idx)
-            break
-
-    return findings
+    ctx = _SecretCtx(
+        lines=content.splitlines(),
+        file_path=file_path,
+        weight=config.scoring.secret / SECRET_WEIGHT_DENOMINATOR,
+        commit_sha=commit_sha,
+    )
+    return _scan_lines(ctx, _get_plugins())

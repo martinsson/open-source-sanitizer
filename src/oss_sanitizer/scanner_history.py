@@ -45,14 +45,16 @@ def scan_git_history(
     logger.info(f"Found {len(blob_map)} unique blobs across history")
 
     findings: list[Finding] = []
-    for idx, (blob_sha, (file_path, commit_sha)) in enumerate(blob_map.items()):
+    for idx, entry in enumerate(blob_map.items()):
+        blob_sha, (file_path, _) = entry
         if progress_callback:
             progress_callback(idx + 1, len(blob_map), file_path)
-        findings.extend(_scan_blob(blob_sha, file_path, commit_sha, repo, config))
+        findings.extend(_scan_blob(entry, repo, config))
     return findings
 
 
-def _scan_blob(blob_sha, file_path, commit_sha, repo, config) -> list[Finding]:
+def _scan_blob(entry: tuple, repo: git.Repo, config: Config) -> list[Finding]:
+    blob_sha, (file_path, commit_sha) = entry
     if should_skip(file_path, config):
         return []
     text = _read_blob(repo, blob_sha)

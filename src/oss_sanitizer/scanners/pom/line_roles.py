@@ -49,15 +49,20 @@ _HIGH_TAGS_INLINE = re.compile(
 )
 
 
+_TAG_ROLE = {
+    **{t: None for t in _SKIP_PARENTS},
+    **{t: SectionRole.HIGH for t in _HIGH_PARENTS},
+    **{t: SectionRole.MEDIUM for t in _MEDIUM_PARENTS},
+}
+
+
 def _role_from_stack(stack: list[str]) -> SectionRole | None:
-    """Walk the tag stack (outermost-first) to determine role for current line."""
+    """Walk the tag stack (innermost-first) to determine role for current line."""
+    sentinel = object()
     for tag in reversed(stack):
-        if tag in _SKIP_PARENTS:
-            return None
-        if tag in _HIGH_PARENTS:
-            return SectionRole.HIGH
-        if tag in _MEDIUM_PARENTS:
-            return SectionRole.MEDIUM
+        role = _TAG_ROLE.get(tag, sentinel)
+        if role is not sentinel:
+            return role  # type: ignore[return-value]
     return SectionRole.DEFAULT
 
 
