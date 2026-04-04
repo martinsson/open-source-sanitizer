@@ -36,22 +36,26 @@ def scan_working_tree(
 def _scan_file(file_path: str, repo_path: Path, config: Config) -> list[Finding]:
     if should_skip(file_path, config):
         return []
-    full_path = repo_path / file_path
-    if not full_path.is_file():
-        return []
-    if full_path.stat().st_size > config.max_file_size_kb * 1024:
-        return []
-    try:
-        content = full_path.read_bytes()
-    except (OSError, PermissionError):
-        return []
-    text = try_decode(content)
+    text = _read_file_text(repo_path / file_path, config)
     if text is None:
         return []
+    return _run_scanners(text, file_path, config, commit_sha=None)
+
+
+def _read_file_text(full_path: Path, config: Config) -> str | None:
+    if not full_path.is_file() or full_path.stat().st_size > config.max_file_size_kb * 1024:
+        return None
+    try:
+        return try_decode(full_path.read_bytes())
+    except (OSError, PermissionError):
+        return None
+
+
+def _run_scanners(text: str, file_path: str, config: Config, commit_sha: str | None) -> list[Finding]:
     return (
-        secrets.scan_for_secrets(text, file_path, config)
-        + urls.scan_for_internal_references(text, file_path, config)
-        + algorithms.scan_for_sensitive_algorithms(text, file_path, config)
+        secrets.scan_for_secrets(text, file_path, config, commit_sha)
+        + urls.scan_for_internal_references(text, file_path, config, commit_sha)
+        + algorithms.scan_for_sensitive_algorithms(text, file_path, config, commit_sha)
     )
 
 

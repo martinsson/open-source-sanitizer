@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 from ..config import Config
 from ..models import Finding, FindingType
+from .algo_prompt import SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -21,42 +22,6 @@ _SKIP_FILENAMES = frozenset({
     "Dockerfile", ".gitignore", "requirements.txt", "pyproject.toml",
     "tsconfig.json", "webpack.config", ".eslintrc",
 })
-
-SYSTEM_PROMPT = """\
-You are a code auditor for the Republic and Canton of Geneva (Switzerland).
-Your task is to evaluate whether a source code file contains **sensitive government algorithms** —
-business logic specific to government operations that could pose a risk if exposed publicly.
-
-Examples of sensitive algorithms:
-- Tax calculation formulas specific to Geneva/Switzerland
-- Social benefit eligibility rules and computation
-- Permit/license approval decision trees
-- Voting/election counting algorithms
-- Law enforcement or judicial scoring/decision logic
-- Financial audit or fraud detection rules
-- Citizen data processing pipelines with specific business rules
-
-Examples of NON-sensitive code (do not flag):
-- Generic utility functions (string manipulation, logging, HTTP helpers)
-- Standard CRUD operations
-- UI rendering code
-- Open-source library wrappers
-- Configuration/setup code
-- Standard authentication flows (OAuth, OIDC)
-
-Respond in JSON with exactly these fields:
-{
-  "is_sensitive": true/false,
-  "confidence": 0.0-1.0,
-  "explanation": "Brief explanation of why this code is or isn't sensitive",
-  "sensitive_sections": [
-    {"line_start": N, "line_end": M, "reason": "..."}
-  ]
-}
-
-Only set is_sensitive=true if you have reasonable confidence the code implements
-government-specific business logic, not just because it processes data.
-"""
 
 
 @dataclass
@@ -142,6 +107,24 @@ def _build_findings(ctx: _AlgoContext, result: dict) -> list[Finding]:
     return [_build_whole_file_finding(ctx, result.get("explanation", ""), confidence)]
 
 
+def _run_llm_scan(content: str, file_path: str, config: Config, commit_sha: str | None) -> list[Finding]:
+    try:
+        result = _call_llm(config, f"File: {file_path}\n\n```\n{content[:MAX_LLM_CONTENT_LENGTH]}\n```")
+    except Exception as e:
+        logger.warning(f"LLM analysis failed for {file_path}: {e}")
+        return []
+    if not result.get("is_sensitive", False):
+        return []
+    confidence = result.get("confidence", DEFAULT_CONFIDENCE)
+    ctx = _AlgoContext(
+        file_path=file_path,
+        base_score=confidence * config.scoring.sensitive_algorithm,
+        commit_sha=commit_sha,
+        lines=content.splitlines(),
+    )
+    return _build_findings(ctx, result)
+
+
 def scan_for_sensitive_algorithms(
     content: str,
     file_path: str,
@@ -149,28 +132,6 @@ def scan_for_sensitive_algorithms(
     commit_sha: str | None = None,
 ) -> list[Finding]:
     """Use LLM to assess if code contains sensitive government algorithms."""
-    if not config.scoring.sensitive_algorithm:
+    if not config.scoring.sensitive_algorithm or _should_skip_file(file_path, content.splitlines()):
         return []
-
-    lines = content.splitlines()
-    if _should_skip_file(file_path, lines):
-        return []
-
-    try:
-        truncated = content[:MAX_LLM_CONTENT_LENGTH]
-        result = _call_llm(config, f"File: {file_path}\n\n```\n{truncated}\n```")
-    except Exception as e:
-        logger.warning(f"LLM analysis failed for {file_path}: {e}")
-        return []
-
-    if not result.get("is_sensitive", False):
-        return []
-
-    confidence = result.get("confidence", DEFAULT_CONFIDENCE)
-    ctx = _AlgoContext(
-        file_path=file_path,
-        base_score=confidence * config.scoring.sensitive_algorithm,
-        commit_sha=commit_sha,
-        lines=lines,
-    )
-    return _build_findings(ctx, result)
+    return _run_llm_scan(content, file_path, config, commit_sha)
