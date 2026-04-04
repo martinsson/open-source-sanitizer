@@ -40,55 +40,56 @@ def scan_git_history(
     progress_callback=None,
 ) -> list[Finding]:
     """Scan all unique blobs across git history."""
-    findings: list[Finding] = []
     repo = git.Repo(repo_path)
-
     blob_map = _build_blob_map(repo, progress_callback)
     logger.info(f"Found {len(blob_map)} unique blobs across history")
 
-    total_blobs = len(blob_map)
+    findings: list[Finding] = []
     for idx, (blob_sha, (file_path, commit_sha)) in enumerate(blob_map.items()):
         if progress_callback:
-            progress_callback(idx + 1, total_blobs, file_path)
-
-        if should_skip(file_path, config):
-            continue
-
-        text = _read_blob(repo, blob_sha)
-        if text is None or len(text) > config.max_file_size_kb * 1024:
-            continue
-
-        findings.extend(secrets.scan_for_secrets(text, file_path, config, commit_sha))
-        findings.extend(urls.scan_for_internal_references(text, file_path, config, commit_sha))
-        findings.extend(algorithms.scan_for_sensitive_algorithms(text, file_path, config, commit_sha))
-
+            progress_callback(idx + 1, len(blob_map), file_path)
+        findings.extend(_scan_blob(blob_sha, file_path, commit_sha, repo, config))
     return findings
+
+
+def _scan_blob(blob_sha, file_path, commit_sha, repo, config) -> list[Finding]:
+    if should_skip(file_path, config):
+        return []
+    text = _read_blob(repo, blob_sha)
+    if text is None or len(text) > config.max_file_size_kb * 1024:
+        return []
+    return (
+        secrets.scan_for_secrets(text, file_path, config, commit_sha)
+        + urls.scan_for_internal_references(text, file_path, config, commit_sha)
+        + algorithms.scan_for_sensitive_algorithms(text, file_path, config, commit_sha)
+    )
 
 
 def _build_blob_map(repo: git.Repo, progress_callback) -> dict[str, tuple[str, str]]:
     """Build blob_sha → (file_path, commit_sha) map from newest to oldest commit."""
     blob_map: dict[str, tuple[str, str]] = {}
     commits = sorted(repo.iter_commits("--all"), key=lambda c: c.committed_date, reverse=True)
-    total_commits = len(commits)
 
-    for commit_idx, commit in enumerate(commits):
+    for idx, commit in enumerate(commits):
         if progress_callback:
-            progress_callback(commit_idx + 1, total_commits, f"commit {commit.hexsha[:8]}")
-        try:
-            for item in commit.tree.traverse():
-                if item.type == "blob" and item.hexsha not in blob_map:
-                    blob_map[item.hexsha] = (item.path, commit.hexsha)
-        except Exception as e:
-            logger.warning(f"Error traversing commit {commit.hexsha[:8]}: {e}")
+            progress_callback(idx + 1, len(commits), f"commit {commit.hexsha[:8]}")
+        _index_commit_blobs(commit, blob_map)
 
     return blob_map
+
+
+def _index_commit_blobs(commit: git.Commit, blob_map: dict) -> None:
+    try:
+        for item in commit.tree.traverse():
+            if item.type == "blob" and item.hexsha not in blob_map:
+                blob_map[item.hexsha] = (item.path, commit.hexsha)
+    except Exception as e:
+        logger.warning(f"Error traversing commit {commit.hexsha[:8]}: {e}")
 
 
 def _read_blob(repo: git.Repo, blob_sha: str) -> str | None:
     try:
         blob = repo.git.show(blob_sha)
-        if isinstance(blob, str):
-            return blob
-        return try_decode(blob)
+        return blob if isinstance(blob, str) else try_decode(blob)
     except Exception:
         return None

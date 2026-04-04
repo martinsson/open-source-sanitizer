@@ -16,7 +16,8 @@ from .scanner import scan
 
 console = Console(stderr=True)
 
-LLM_DISABLED_SCORE = 0.0
+LLM_DISABLED_SCORE = 0
+PROGRESS_ITEM_TRUNCATE = 50
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -72,7 +73,7 @@ def _run_scan_with_progress(repo_path, config):
         task_id = progress.add_task("Scanning...", total=None)
 
         def on_progress(current: int, total: int, item: str):
-            progress.update(task_id, total=total, completed=current, description=f"Scanning: {item[:50]}")
+            progress.update(task_id, total=total, completed=current, description=f"Scanning: {item[:PROGRESS_ITEM_TRUNCATE]}")
 
         return scan(repo_path, config, progress_callback=on_progress)
 
