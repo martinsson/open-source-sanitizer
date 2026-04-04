@@ -10,6 +10,9 @@ from ..models import Finding, FindingType
 
 logger = logging.getLogger(__name__)
 
+MAX_LLM_CONTENT_LENGTH = 8000
+MIN_FILE_LINES = 10
+
 SYSTEM_PROMPT = """\
 You are a code auditor for the Republic and Canton of Geneva (Switzerland).
 Your task is to evaluate whether a source code file contains **sensitive government algorithms** —
@@ -93,7 +96,7 @@ def scan_for_sensitive_algorithms(
 
     # Skip very short files
     lines = content.splitlines()
-    if len(lines) < 10:
+    if len(lines) < MIN_FILE_LINES:
         return []
 
     # Skip files that are clearly not code with business logic
@@ -107,7 +110,7 @@ def scan_for_sensitive_algorithms(
 
     try:
         # Truncate large files to stay within token limits
-        truncated = content[:8000] if len(content) > 8000 else content
+        truncated = content[:MAX_LLM_CONTENT_LENGTH] if len(content) > MAX_LLM_CONTENT_LENGTH else content
         user_message = f"File: {file_path}\n\n```\n{truncated}\n```"
 
         result = _call_llm(config, user_message)

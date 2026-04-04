@@ -21,6 +21,10 @@ from detect_secrets.plugins.slack import SlackDetector
 from ..config import Config
 from ..models import Finding, FindingType
 
+BASE64_ENTROPY_LIMIT = 4.5
+HEX_ENTROPY_LIMIT = 3.0
+MAX_SECRET_SCORE = 10.0
+
 # Files that commonly have false positives
 FALSE_POSITIVE_PATHS = [
     r"(?:^|/)(?:package-lock\.json|yarn\.lock|pnpm-lock\.yaml|Cargo\.lock|go\.sum|poetry\.lock)$",
@@ -47,8 +51,8 @@ def _get_plugins() -> list[BasePlugin]:
         KeywordDetector(),
         PrivateKeyDetector(),
         SlackDetector(),
-        Base64HighEntropyString(limit=4.5),
-        HexHighEntropyString(limit=3.0),
+        Base64HighEntropyString(limit=BASE64_ENTROPY_LIMIT),
+        HexHighEntropyString(limit=HEX_ENTROPY_LIMIT),
     ]
 
 
@@ -104,7 +108,7 @@ def scan_for_secrets(
                     description=secret_type,
                     file_path=file_path,
                     line_number=line_idx,
-                    score=10.0 * weight,  # all secrets get max weight (severity is binary)
+                    score=MAX_SECRET_SCORE * weight,  # all secrets get max weight (severity is binary)
                     snippet=snippet,
                     explanation=f"Pattern matched: {secret_type}. Secrets must be removed per Charte §2 (Confidentialité).",
                     commit_sha=commit_sha,
