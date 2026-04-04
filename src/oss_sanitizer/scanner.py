@@ -21,41 +21,38 @@ def scan_working_tree(
     progress_callback=None,
 ) -> list[Finding]:
     """Scan current working tree files."""
-    findings: list[Finding] = []
     repo = git.Repo(repo_path)
-
     tracked = {item.path for item in repo.tree().traverse() if item.type == "blob"}
     tracked.update(repo.untracked_files)
 
-    total = len(tracked)
+    findings: list[Finding] = []
     for idx, file_path in enumerate(sorted(tracked)):
         if progress_callback:
-            progress_callback(idx + 1, total, file_path)
-
-        if should_skip(file_path, config):
-            continue
-
-        full_path = repo_path / file_path
-        if not full_path.is_file():
-            continue
-
-        if full_path.stat().st_size > config.max_file_size_kb * 1024:
-            continue
-
-        try:
-            content = full_path.read_bytes()
-        except (OSError, PermissionError):
-            continue
-
-        text = try_decode(content)
-        if text is None:
-            continue
-
-        findings.extend(secrets.scan_for_secrets(text, file_path, config))
-        findings.extend(urls.scan_for_internal_references(text, file_path, config))
-        findings.extend(algorithms.scan_for_sensitive_algorithms(text, file_path, config))
-
+            progress_callback(idx + 1, len(tracked), file_path)
+        findings.extend(_scan_file(file_path, repo_path, config))
     return findings
+
+
+def _scan_file(file_path: str, repo_path: Path, config: Config) -> list[Finding]:
+    if should_skip(file_path, config):
+        return []
+    full_path = repo_path / file_path
+    if not full_path.is_file():
+        return []
+    if full_path.stat().st_size > config.max_file_size_kb * 1024:
+        return []
+    try:
+        content = full_path.read_bytes()
+    except (OSError, PermissionError):
+        return []
+    text = try_decode(content)
+    if text is None:
+        return []
+    return (
+        secrets.scan_for_secrets(text, file_path, config)
+        + urls.scan_for_internal_references(text, file_path, config)
+        + algorithms.scan_for_sensitive_algorithms(text, file_path, config)
+    )
 
 
 def scan(
