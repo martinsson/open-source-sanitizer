@@ -87,6 +87,17 @@ def _scan_line_urls(line: str, line_idx: int, ctx: _ScanContext, factor: float) 
     return findings
 
 
+def _without_url_overlaps(
+    matches: list[tuple[int, int, str]], line: str,
+) -> list[tuple[int, int, str]]:
+    url_spans = [(m.start(), m.end()) for m in URL_PATTERN.finditer(line)]
+    return [
+        (start, end, h)
+        for start, end, h in _filter_hostname_overlaps(matches)
+        if not any(us <= start and end <= ue for us, ue in url_spans)
+    ]
+
+
 def _scan_line_hostnames(line: str, line_idx: int, ctx: _ScanContext, factor: float) -> list[Finding]:
     raw_matches: list[tuple[int, int, str]] = [
         (hm.start(), hm.end(), hm.group(0))
@@ -94,9 +105,7 @@ def _scan_line_hostnames(line: str, line_idx: int, ctx: _ScanContext, factor: fl
         for hm in hp.finditer(line)
     ]
     findings = []
-    for start, end, hostname in _filter_hostname_overlaps(raw_matches):
-        if any(m.start() <= start and end <= m.end() for m in URL_PATTERN.finditer(line)):
-            continue
+    for start, end, hostname in _without_url_overlaps(raw_matches, line):
         if is_false_positive_hostname(HostnameMatch(hostname, line, start, end, ctx.hostname_allowlist)):
             continue
         findings.append(Finding(

@@ -55,8 +55,9 @@ def extract_parent(root: ET.Element, ns: str, model) -> None:
 
 
 def line_of(lines: list[str], group_id: str, artifact_id: str) -> int:
+    joined = "\n".join(lines)
     for i, line in enumerate(lines, 1):
-        if artifact_id in line and group_id in "\n".join(lines[max(0, i - 3):i + 3]):
+        if artifact_id in line and group_id in joined:
             return i
     return 1
 

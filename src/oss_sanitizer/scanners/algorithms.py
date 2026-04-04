@@ -65,11 +65,22 @@ def _should_skip_file(file_path: str, lines: list[str]) -> bool:
     return len(lines) < MIN_FILE_LINES or any(file_path.endswith(n) for n in _SKIP_FILENAMES)
 
 
+def _coerce_int(value: object, default: int) -> int:
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
+
 def _build_section_finding(ctx: _AlgoContext, section: dict, confidence: float) -> Finding:
-    line_start = section.get("line_start", 1)
-    line_end = section.get("line_end", min(line_start + 5, len(ctx.lines)))
-    snippet_lines = ctx.lines[max(0, line_start - 1):line_end]
-    snippet = "\n".join(f"{line_start + i:>4} | {l}" for i, l in enumerate(snippet_lines))
+    total = len(ctx.lines)
+    line_start = max(1, min(_coerce_int(section.get("line_start"), 1), max(total, 1)))
+    default_end = min(line_start + 5, total)
+    line_end = max(line_start, min(_coerce_int(section.get("line_end"), default_end), total))
+    snippet = "\n".join(
+        f"{line_start + i:>4} | {l}"
+        for i, l in enumerate(ctx.lines[line_start - 1:line_end])
+    )
     return Finding(
         finding_type=FindingType.SENSITIVE_ALGORITHM,
         description=f"Potentially sensitive algorithm (confidence: {confidence:.0%})",
