@@ -16,7 +16,7 @@ from .scanner import scan
 
 console = Console(stderr=True)
 
-LLM_DISABLED_SCORE = 0
+LLM_DISABLED_SCORE = 0.0  # noqa: WPS358
 PROGRESS_ITEM_TRUNCATE = 50
 
 

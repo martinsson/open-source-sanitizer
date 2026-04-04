@@ -43,9 +43,9 @@ def _scan_file(file_path: str, repo_path: Path, config: Config) -> list[Finding]
 
 
 def _read_file_text(full_path: Path, config: Config) -> str | None:
-    if not full_path.is_file() or full_path.stat().st_size > config.max_file_size_kb * 1024:
-        return None
     try:
+        if not full_path.is_file() or full_path.stat().st_size > config.max_file_size_kb * 1024:
+            return None
         return try_decode(full_path.read_bytes())
     except (OSError, PermissionError):
         return None
