@@ -10,7 +10,7 @@ from oss_sanitizer.scanners.dependencies import (
     find_internal_dependencies,
     render_dependency_report,
 )
-from oss_sanitizer.scanners.pom_model import PomModel
+from oss_sanitizer.scanners.pom import PomModel
 
 from .conftest import FIXTURES
 
@@ -176,7 +176,7 @@ def test_find_internal_dependencies_empty_repo(config: Config, tmp_path: Path):
 
 def test_pom_model_line_number():
     """PomModel should set line numbers on parsed dependencies."""
-    from oss_sanitizer.scanners.pom_model import parse as parse_model
+    from oss_sanitizer.scanners.pom import parse as parse_model
     pom_path = FIXTURES / "sample_pom.xml"
     model = parse_model(pom_path, FIXTURES)
     assert model is not None

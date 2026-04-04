@@ -9,7 +9,7 @@ from pathlib import Path
 from jinja2 import Environment, PackageLoader
 
 from ..config import Config
-from .pom_model import PomDependency, PomModel, parse as parse_pom_model
+from .pom.model import PomDependency, PomModel, parse as parse_pom_model
 
 logger = logging.getLogger(__name__)
 
