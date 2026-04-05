@@ -1,0 +1,10 @@
+repos:
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.1.1
+    hooks:
+      - id: flake8
+        additional_dependencies:
+          - flake8-functions>=0.0.8
+          - flake8-cognitive-complexity>=0.1
+          - wemake-python-styleguide>=0.19
+          - flake8-simplify>=0.21

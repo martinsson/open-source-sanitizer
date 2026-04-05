@@ -1,7 +1,8 @@
 # oss-sanitizer
 
-[![CI](https://github.com/republique-et-canton-de-geneve/open-source-sanitizer/actions/workflows/ci.yml/badge.svg)](https://github.com/republique-et-canton-de-geneve/open-source-sanitizer/actions/workflows/ci.yml)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=republique-et-canton-de-geneve_open-source-sanitizer&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=republique-et-canton-de-geneve_open-source-sanitizer)
+[![Tests](https://github.com/martinsson/open-source-sanitizer/actions/workflows/ci.yml/badge.svg)](https://github.com/martinsson/open-source-sanitizer/actions/workflows/ci.yml)
+[![Lint](https://github.com/martinsson/open-source-sanitizer/actions/workflows/lint.yml/badge.svg)](https://github.com/martinsson/open-source-sanitizer/actions/workflows/lint.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=martinsson_open-source-sanitizer&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=martinsson_open-source-sanitizer)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 Source code compliance scanner for the [Geneva Open Source Charter](https://github.com/republique-et-canton-de-geneve/strategie-open-source/blob/main/charte_open_source.md).
