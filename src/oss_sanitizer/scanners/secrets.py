@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from functools import lru_cache
 
 from detect_secrets.plugins.artifactory import ArtifactoryDetector
@@ -21,12 +22,24 @@ from detect_secrets.plugins.slack import SlackDetector
 from ..config import Config
 from ..models import Finding, FindingType
 
-# Files that commonly have false positives
+BASE64_ENTROPY_LIMIT = 4.5
+HEX_ENTROPY_LIMIT = 3.0
+MAX_SECRET_SCORE = 10.0
+SECRET_WEIGHT_DENOMINATOR = 10
+
 FALSE_POSITIVE_PATHS = [
     r"(?:^|/)(?:package-lock\.json|yarn\.lock|pnpm-lock\.yaml|Cargo\.lock|go\.sum|poetry\.lock)$",
     r"(?:^|/)\.git/",
     r"(?:^|/)test(?:s|data|fixtures?)/.*(?:mock|fake|stub|fixture|sample|example)",
 ]
+
+
+@dataclass
+class _SecretCtx:
+    lines: list[str]
+    file_path: str
+    weight: float
+    commit_sha: str | None
 
 
 def is_false_positive_path(path: str) -> bool:
@@ -35,7 +48,6 @@ def is_false_positive_path(path: str) -> bool:
 
 @lru_cache(maxsize=1)
 def _get_plugins() -> list[BasePlugin]:
-    """Instantiate and cache all detect-secrets plugins."""
     return [
         AWSKeyDetector(),
         ArtifactoryDetector(),
@@ -47,9 +59,43 @@ def _get_plugins() -> list[BasePlugin]:
         KeywordDetector(),
         PrivateKeyDetector(),
         SlackDetector(),
-        Base64HighEntropyString(limit=4.5),
-        HexHighEntropyString(limit=3.0),
+        Base64HighEntropyString(limit=BASE64_ENTROPY_LIMIT),
+        HexHighEntropyString(limit=HEX_ENTROPY_LIMIT),
     ]
+
+
+def _build_secret_finding(secret, line_idx: int, ctx: _SecretCtx) -> Finding:
+    start = max(0, line_idx - 3)
+    end = min(len(ctx.lines), line_idx + 2)
+    snippet = "\n".join(f"{start + i + 1:>4} | {l}" for i, l in enumerate(ctx.lines[start:end]))
+    if secret.secret_value and len(secret.secret_value) > 8:
+        masked = secret.secret_value[:4] + "..." + secret.secret_value[-4:]
+        snippet = snippet.replace(secret.secret_value, masked)
+    return Finding(
+        finding_type=FindingType.SECRET,
+        description=secret.type,
+        file_path=ctx.file_path,
+        line_number=line_idx,
+        score=MAX_SECRET_SCORE * ctx.weight,
+        snippet=snippet,
+        explanation=f"Pattern matched: {secret.type}. Secrets must be removed per Charte §2 (Confidentialité).",
+        commit_sha=ctx.commit_sha,
+    )
+
+
+def _scan_lines(ctx: _SecretCtx, plugins: list[BasePlugin]) -> list[Finding]:
+    findings: list[Finding] = []
+    seen_lines: set[int] = set()
+    for line_idx, line in enumerate(ctx.lines, start=1):
+        if line_idx in seen_lines:
+            continue
+        for plugin in plugins:
+            results = list(plugin.analyze_line(filename=ctx.file_path, line=line, line_number=line_idx))
+            if results:
+                findings.append(_build_secret_finding(results[0], line_idx, ctx))
+                seen_lines.add(line_idx)
+                break
+    return findings
 
 
 def scan_for_secrets(
@@ -61,56 +107,10 @@ def scan_for_secrets(
     """Scan file content for secrets using detect-secrets plugins."""
     if is_false_positive_path(file_path):
         return []
-
-    lines = content.splitlines()
-    plugins = _get_plugins()
-    weight = config.scoring.secret / 10.0
-
-    findings: list[Finding] = []
-    seen_lines: set[int] = set()  # one finding per line
-
-    for line_idx, line in enumerate(lines, start=1):
-        if line_idx in seen_lines:
-            continue
-
-        for plugin in plugins:
-            results = list(plugin.analyze_line(
-                filename=file_path,
-                line=line,
-                line_number=line_idx,
-            ))
-            if not results:
-                continue
-
-            secret = results[0]
-            secret_type = secret.type
-
-            # Build snippet with masked secret value
-            start = max(0, line_idx - 3)
-            end = min(len(lines), line_idx + 2)
-            snippet_lines = lines[start:end]
-            snippet = "\n".join(
-                f"{start + i + 1:>4} | {l}" for i, l in enumerate(snippet_lines)
-            )
-
-            # Mask the raw secret value in the snippet
-            if secret.secret_value and len(secret.secret_value) > 8:
-                masked = secret.secret_value[:4] + "..." + secret.secret_value[-4:]
-                snippet = snippet.replace(secret.secret_value, masked)
-
-            findings.append(
-                Finding(
-                    finding_type=FindingType.SECRET,
-                    description=secret_type,
-                    file_path=file_path,
-                    line_number=line_idx,
-                    score=10.0 * weight,  # all secrets get max weight (severity is binary)
-                    snippet=snippet,
-                    explanation=f"Pattern matched: {secret_type}. Secrets must be removed per Charte §2 (Confidentialité).",
-                    commit_sha=commit_sha,
-                )
-            )
-            seen_lines.add(line_idx)
-            break  # one finding per line
-
-    return findings
+    ctx = _SecretCtx(
+        lines=content.splitlines(),
+        file_path=file_path,
+        weight=config.scoring.secret / SECRET_WEIGHT_DENOMINATOR,
+        commit_sha=commit_sha,
+    )
+    return _scan_lines(ctx, _get_plugins())
