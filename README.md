@@ -225,6 +225,18 @@ Tested with:
 
 ---
 
+## Complementary Scanning Tools
+
+`oss-sanitizer` covers organizational governance patterns (internal domains, credentials, sensitive algorithms). For a more comprehensive open-source migration, consider additional scanning tools for:
+
+- **Information leakage detection** (internal APIs, service names, infrastructure patterns)
+- **Git history scanning** (secrets in past commits)
+- **Configuration auditing** (hardcoded environment-specific settings)
+
+See [**COMPLEMENTARY_SCANNING_TOOLS.md**](COMPLEMENTARY_SCANNING_TOOLS.md) for recommended tools, integration examples, and CI/CD workflows.
+
+---
+
 ## Development
 
 ```bash
