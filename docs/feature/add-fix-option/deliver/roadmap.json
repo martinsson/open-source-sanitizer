@@ -1,0 +1,146 @@
+{
+  "feature_id": "add-fix-option",
+  "goal": "Add --fix option to oss-sanitizer CLI that scrubs internal hostnames in URLs in-place across repo files, assigning stable replacement tokens (INTERNAL-HOST-1, INTERNAL-HOST-2, ...) in order of first encounter, and writes a sanitizer-replacements.yaml mapping at the repo root.",
+  "phases": [
+    {
+      "id": "01",
+      "name": "Hostname token registry",
+      "steps": [
+        {
+          "id": "01-01",
+          "name": "HostnameRegistry: deterministic token assignment",
+          "description": "Create src/oss_sanitizer/fix/registry.py containing a HostnameRegistry class. The registry accepts hostnames in the order they are first encountered and assigns each a stable token of the form INTERNAL-HOST-N (N = 1-based counter). Subsequent calls with the same hostname return the previously assigned token. Expose a read-only mapping property (token -> original hostname) suitable for YAML serialisation. No file I/O at this step.",
+          "acceptance_criteria": [
+            "Calling register() with a new hostname returns 'INTERNAL-HOST-1' for the first, 'INTERNAL-HOST-2' for the second, and so on.",
+            "Calling register() again with an already-seen hostname returns the same token that was assigned on first encounter.",
+            "The mapping property returns {token: original_hostname} for every registered hostname.",
+            "Two distinct hostnames that differ only by case are treated as distinct entries."
+          ],
+          "implementation_scope": [
+            "src/oss_sanitizer/fix/__init__.py",
+            "src/oss_sanitizer/fix/registry.py",
+            "tests/fix/test_registry.py"
+          ],
+          "estimated_minutes": 20,
+          "dependencies": []
+        },
+        {
+          "id": "01-02",
+          "name": "YAML mapping writer",
+          "description": "Add a write_replacements_yaml(registry, repo_path) function in src/oss_sanitizer/fix/registry.py. It serialises registry.mapping as YAML (key = token, value = original hostname) and writes it to {repo_path}/sanitizer-replacements.yaml, overwriting any existing file.",
+          "acceptance_criteria": [
+            "Given a registry with two entries, the written YAML file contains exactly two top-level keys matching the assigned tokens.",
+            "Each value in the YAML file is the original hostname string that was registered.",
+            "Calling the function a second time with a different registry overwrites the previous file completely.",
+            "The file is written to the repo root, not the working directory of the tool."
+          ],
+          "implementation_scope": [
+            "src/oss_sanitizer/fix/registry.py",
+            "tests/fix/test_registry.py"
+          ],
+          "estimated_minutes": 15,
+          "dependencies": ["01-01"]
+        }
+      ]
+    },
+    {
+      "id": "02",
+      "name": "In-place file rewriter",
+      "steps": [
+        {
+          "id": "02-01",
+          "name": "URL hostname extractor on Finding",
+          "description": "Add a helper function extract_url_hostname(url: str) -> str | None in src/oss_sanitizer/fix/rewriter.py. It parses a full URL string (matching the existing URL_PATTERN: https?://hostname[/...]) and returns only the hostname portion (no scheme, no path, no port). Returns None for strings that are not valid URLs. This is the only piece that knows about URL structure; the rewriter uses it to locate what to replace.",
+          "acceptance_criteria": [
+            "extract_url_hostname('https://api.etat-ge.ch/v2/citizens') returns 'api.etat-ge.ch'.",
+            "extract_url_hostname('http://srv-db01.internal:8080/path') returns 'srv-db01.internal'.",
+            "extract_url_hostname('not-a-url') returns None.",
+            "extract_url_hostname('https://host') returns 'host' (no path)."
+          ],
+          "implementation_scope": [
+            "src/oss_sanitizer/fix/rewriter.py",
+            "tests/fix/test_rewriter.py"
+          ],
+          "estimated_minutes": 15,
+          "dependencies": ["01-01"]
+        },
+        {
+          "id": "02-02",
+          "name": "apply_fixes: rewrite file content from findings",
+          "description": "Add apply_fixes(findings: list[Finding], registry: HostnameRegistry) -> dict[str, str] in src/oss_sanitizer/fix/rewriter.py. For each INTERNAL_URL finding, extract the hostname from the URL in the finding description, register it with the registry to obtain its token, then replace every occurrence of that hostname inside URL contexts in the affected file content. Returns a dict mapping file_path -> rewritten_content for all files that had at least one substitution. Files with no INTERNAL_URL findings are not included. Hostname replacement is scoped to URL contexts only (i.e. replaces only the hostname segment of https?://hostname[...] patterns, not bare hostname occurrences).",
+          "acceptance_criteria": [
+            "Given a finding on file 'app.py' describing 'Internal URL: https://api.etat-ge.ch/v2', the returned content for 'app.py' has 'api.etat-ge.ch' replaced by its assigned token inside the URL.",
+            "The scheme (https://) and path (/v2) are preserved; only the hostname is substituted.",
+            "Two findings in the same file with different hostnames both get substituted in a single pass.",
+            "A file with only INTERNAL_HOSTNAME findings (no INTERNAL_URL findings) is not included in the returned dict.",
+            "The registry accumulates all encountered hostnames across multiple files."
+          ],
+          "implementation_scope": [
+            "src/oss_sanitizer/fix/rewriter.py",
+            "tests/fix/test_rewriter.py"
+          ],
+          "estimated_minutes": 30,
+          "dependencies": ["02-01"]
+        },
+        {
+          "id": "02-03",
+          "name": "write_fixed_files: persist rewritten content to disk",
+          "description": "Add write_fixed_files(rewrites: dict[str, str]) in src/oss_sanitizer/fix/rewriter.py. For each entry it overwrites the file at the given path with the new content, preserving the original encoding (UTF-8). This function contains all filesystem I/O for the rewrite step and is the only function tests need to mock when testing apply_fixes in isolation.",
+          "acceptance_criteria": [
+            "After calling write_fixed_files, reading the file at each path returns the rewritten content.",
+            "A file not present in the rewrites dict is not modified.",
+            "If rewrites is empty, no files are touched."
+          ],
+          "implementation_scope": [
+            "src/oss_sanitizer/fix/rewriter.py",
+            "tests/fix/test_rewriter.py"
+          ],
+          "estimated_minutes": 15,
+          "dependencies": ["02-02"]
+        }
+      ]
+    },
+    {
+      "id": "03",
+      "name": "CLI integration",
+      "steps": [
+        {
+          "id": "03-01",
+          "name": "Add --fix argument and mutual-exclusion guard with --history",
+          "description": "In src/oss_sanitizer/cli_args.py, add a --fix flag (action='store_true'). In src/oss_sanitizer/cli.py, after parsing, raise a clear error (exit code 1, message printed to stderr) when both --fix and --history are supplied. No fix logic is wired yet; this step only validates the argument contract.",
+          "acceptance_criteria": [
+            "Running oss-sanitizer <repo> --fix does not raise an unrecognised argument error.",
+            "Running oss-sanitizer <repo> --fix --history prints an error message containing the words 'mutually exclusive' and exits with code 1.",
+            "Running oss-sanitizer <repo> --history alone continues to work as before.",
+            "Running oss-sanitizer <repo> --fix alone proceeds past argument validation without error."
+          ],
+          "implementation_scope": [
+            "src/oss_sanitizer/cli_args.py",
+            "src/oss_sanitizer/cli.py",
+            "tests/test_cli.py"
+          ],
+          "estimated_minutes": 20,
+          "dependencies": ["02-03"]
+        },
+        {
+          "id": "03-02",
+          "name": "Wire --fix into the CLI main flow",
+          "description": "In src/oss_sanitizer/cli.py, after the scan completes, when args.fix is True: call apply_fixes with the INTERNAL_URL findings and a fresh HostnameRegistry, then call write_fixed_files with the result, then call write_replacements_yaml to write sanitizer-replacements.yaml at the repo root. Print a summary line to stderr listing the number of files modified and the path of the replacements YAML. The exit code remains 0 when --fix is provided and all findings are scrubbed (the report is still generated).",
+          "acceptance_criteria": [
+            "Given a repo containing a file with an internal URL, running with --fix modifies that file on disk replacing the hostname with the assigned token.",
+            "After running with --fix, sanitizer-replacements.yaml exists at the repo root and maps each token to its original hostname.",
+            "The stderr summary line reports the correct count of modified files.",
+            "The markdown report is still written (to --output or stdout) when --fix is used.",
+            "Running --fix on a repo with no internal URL findings produces an empty sanitizer-replacements.yaml and modifies no files."
+          ],
+          "implementation_scope": [
+            "src/oss_sanitizer/cli.py",
+            "tests/test_cli.py"
+          ],
+          "estimated_minutes": 25,
+          "dependencies": ["03-01"]
+        }
+      ]
+    }
+  ]
+}
