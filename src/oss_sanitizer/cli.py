@@ -11,7 +11,7 @@ from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn
 
 from .cli_args import build_parser, print_sample_config
 from .config import Config
-from .fixer import apply_fixes, build_replacement_map, write_replacement_map
+from .fixer import apply_fixes, make_scrubbers, write_replacement_map
 from .report import render_markdown
 from .scanner import scan
 
@@ -84,9 +84,10 @@ def _run_scan_with_progress(repo_path, config):
 
 
 def _run_fix(findings, repo_path: Path) -> None:
-    replacement_map = build_replacement_map(findings)
+    scrubbers = make_scrubbers(findings)
+    replacement_map = {k: v for s in scrubbers for k, v in s.replacements.items()}
     write_replacement_map(replacement_map, repo_path / "oss-sanitizer-replacements.yaml")
-    apply_fixes(findings, replacement_map, repo_path)
+    apply_fixes(findings, scrubbers, repo_path)
     console.print(f"[green]Fixed {len(replacement_map)} unique value(s). Replacement map: oss-sanitizer-replacements.yaml[/green]")
 
 
