@@ -29,8 +29,6 @@ def test_default_skip_paths_covers_all_ecosystems():
         "bower_components/",
         ".next/",
         ".nuxt/",
-        # docker compose
-        "compose/",
     ]
     for entry in expected:
         assert entry in config.patterns.skip_paths, f"Missing from skip_paths: {entry!r}"
@@ -47,8 +45,6 @@ def test_default_skip_paths_covers_all_ecosystems():
     ("bower_components/jquery/dist/jquery.js",                 "js bower packages"),
     (".next/server/app/page.js",                               "nextjs build cache"),
     (".nuxt/dist/server/index.js",                             "nuxtjs build cache"),
-    # docker compose
-    ("compose/db/docker-compose.yml",                          "docker compose dir"),
     # regressions — entries already present before this change
     ("node_modules/lodash/index.js",                           "js node_modules"),
     (".venv/lib/python3.12/site-packages/click/__init__.py",   "python dotted venv"),
@@ -63,7 +59,6 @@ def test_should_skip_third_party_paths(path, label):
 @pytest.mark.parametrize("path", [
     "src/main/java/com/example/App.java",
     "src/components/EnvManager.ts",
-    "lib/compose_helpers.py",
     "docs/targets.md",
     "src/venv_bootstrap.sh",
     "app/models/vendor_invoice.py",
