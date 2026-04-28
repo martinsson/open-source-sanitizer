@@ -14,16 +14,25 @@ def build_parser() -> argparse.ArgumentParser:
         prog="oss-sanitizer",
         description="Scan a Git repository for compliance with the Geneva Open Source Charter.",
     )
+    _add_scan_args(parser)
+    _add_output_args(parser)
+    return parser
+
+
+def _add_scan_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("repo", help="Path to the Git repository to scan.")
     parser.add_argument("-c", "--config", help="Path to YAML configuration file.", default=None)
     parser.add_argument("--history", action=_STORE_TRUE, help="Scan the full git history (unique blobs).")
-    parser.add_argument("-o", "--output", help="Output file for the Markdown report (default: stdout).", default=None)
     parser.add_argument("--llm", action=_STORE_TRUE, help="Enable LLM-based sensitive algorithm detection (disabled by default).")
     parser.add_argument("-v", "--verbose", action=_STORE_TRUE, help="Enable verbose logging.")
-    parser.add_argument("--generate-config", action=_STORE_TRUE, help="Print a sample YAML configuration and exit.")
     parser.add_argument("--allowlist", help="Path to public domains allowlist YAML (default: bundled file).", default=None)
     parser.add_argument("--blacklist", help="Path to internal domains blacklist YAML.", default=None)
-    return parser
+
+
+def _add_output_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("-o", "--output", help="Output file for the Markdown report (default: stdout).", default=None)
+    parser.add_argument("--generate-config", action=_STORE_TRUE, help="Print a sample YAML configuration and exit.")
+    parser.add_argument("--fix", action=_STORE_TRUE, help="Apply replacements to source files and write oss-sanitizer-replacements.yaml.")
 
 
 def print_sample_config() -> None:
