@@ -97,28 +97,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Free disk space (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          df -h
-
       - uses: astral-sh/setup-uv@v4
 
       - name: Set up Python
         run: uv python install 3.12
 
-      - name: Install project
-        run: uv sync
-
       - name: Build project wheel
         run: uv build --wheel --out-dir wheelhouse/
 
-      - name: Export pinned requirements
-        run: uv export --no-dev --no-hashes --output-file requirements.txt
-
-      - name: Download all dependency wheels
-        run: uv run pip download --dest wheelhouse/ --requirement requirements.txt
+      - name: Download core runtime dependency wheels
+        # openai/anthropic (LLM deps) are excluded — --llm is off by default and
+        # their transitive trees are too large for CI runners.
+        run: >
+          uv run pip download --dest wheelhouse/ --only-binary=:all:
+          "gitpython>=3.1"
+          "pyyaml>=6.0"
+          "rich>=13.0"
+          "tldextract>=5.3.1"
+          "jinja2>=3.1.6"
+          "detect-secrets>=1.5.0"
 
       - name: Zip wheelhouse
         shell: bash
