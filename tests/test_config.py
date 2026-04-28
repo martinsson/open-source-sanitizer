@@ -146,3 +146,14 @@ def test_load_blacklist_nonexistent():
     original = len(config.patterns.hostname_patterns)
     config.load_blacklist(Path("/nonexistent/blacklist.yaml"))
     assert len(config.patterns.hostname_patterns) == original
+
+
+def test_compose_in_default_skip_paths():
+    config = Config()
+    assert "compose/" in config.patterns.skip_paths
+
+
+def test_should_skip_compose_directory():
+    from oss_sanitizer.scanner_history import should_skip
+    config = Config()
+    assert should_skip("compose/service.yml", config)

@@ -83,6 +83,7 @@ class PatternsConfig:
             "vendor/",
             ".gradle/",
             ".mvn/",
+            "compose/",
         ]
     )
 
