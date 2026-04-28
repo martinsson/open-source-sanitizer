@@ -15,3 +15,4 @@ internal_domains_blacklist.yaml
 .coverage
 .idea/
 .nwave/
+SONAR_TOKEN
