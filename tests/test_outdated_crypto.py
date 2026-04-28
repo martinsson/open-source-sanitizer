@@ -210,7 +210,7 @@ def test_score_uses_config_weight():
     config = Config()
     config.scoring.outdated_crypto = 6.0
     findings = scan_for_outdated_crypto('DES.new(key)', "cipher.py", config)
-    assert findings[0].score == 6.0
+    assert findings[0].score == pytest.approx(6.0)
 
 
 def test_commit_sha_passed_through():
@@ -234,14 +234,12 @@ def test_no_false_positive_for_aes():
     assert findings == []
 
 
-def test_no_false_positive_for_legitimate_comment():
-    """A comment mentioning DES in historical context should still be flagged."""
+def test_no_false_positive_for_historical_comment():
+    """Bare algorithm name in a comment (no API call context) is not flagged."""
     config = Config()
     content = "# DES was broken in 1999 — we now use AES"
     findings = scan_for_outdated_crypto(content, "notes.py", config)
-    # Comments mentioning DES are flagged — author should suppress if needed.
-    # This is intentional: the scanner is conservative (flags comments too).
-    assert len(findings) >= 0  # either outcome is acceptable; test documents the choice
+    assert findings == []
 
 
 def test_no_false_positive_for_deserialization():
