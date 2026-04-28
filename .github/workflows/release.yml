@@ -82,10 +82,52 @@ jobs:
           name: ${{ matrix.artifact }}
           path: dist/${{ matrix.artifact }}
 
+  build-bundle:
+    name: Build wheelhouse bundle (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: test
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            bundle: oss-sanitizer-bundle-linux.zip
+          - os: windows-latest
+            bundle: oss-sanitizer-bundle-windows.zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install project
+        run: uv sync
+
+      - name: Build project wheel
+        run: uv build --wheel --out-dir wheelhouse/
+
+      - name: Export pinned requirements
+        run: uv export --no-dev --no-hashes --output-file requirements.txt
+
+      - name: Download all dependency wheels
+        run: uv run pip download --dest wheelhouse/ --requirement requirements.txt
+
+      - name: Zip wheelhouse
+        shell: bash
+        run: cd wheelhouse && zip -r ../${{ matrix.bundle }} .
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.bundle }}
+          path: ${{ matrix.bundle }}
+
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [test, build-executable]
+    needs: [test, build-executable, build-bundle]
 
     steps:
       - uses: actions/checkout@v4
