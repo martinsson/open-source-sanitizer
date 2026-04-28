@@ -80,6 +80,7 @@ def _build_secret_finding(secret, line_idx: int, ctx: _SecretCtx) -> Finding:
         snippet=snippet,
         explanation=f"Pattern matched: {secret.type}. Secrets must be removed per Charte §2 (Confidentialité).",
         commit_sha=ctx.commit_sha,
+        match_value=secret.secret_value,
     )
 
 

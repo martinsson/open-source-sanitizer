@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from urllib.parse import urlparse
 
 from ..config import Config
 from ..models import Finding, FindingType
@@ -83,6 +84,7 @@ def _scan_line_urls(line: str, line_idx: int, ctx: _ScanContext, factor: float) 
                 snippet=make_snippet(ctx.lines, line_idx),
                 explanation=url_explanation(factor),
                 commit_sha=ctx.commit_sha,
+                match_value=urlparse(url).hostname,
             ))
     return findings
 
@@ -117,6 +119,7 @@ def _scan_line_hostnames(line: str, line_idx: int, ctx: _ScanContext, factor: fl
             snippet=make_snippet(ctx.lines, line_idx),
             explanation=hostname_explanation(factor),
             commit_sha=ctx.commit_sha,
+            match_value=hostname,
         ))
     return findings
 
