@@ -117,9 +117,14 @@ jobs:
           "jinja2>=3.1.6"
           "detect-secrets>=1.5.0"
 
-      - name: Zip wheelhouse
-        shell: bash
+      - name: Zip wheelhouse (Linux)
+        if: runner.os == 'Linux'
         run: cd wheelhouse && zip -r ../${{ matrix.bundle }} .
+
+      - name: Zip wheelhouse (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path wheelhouse\* -DestinationPath ${{ matrix.bundle }}
 
       - name: Upload bundle artifact
         uses: actions/upload-artifact@v4
