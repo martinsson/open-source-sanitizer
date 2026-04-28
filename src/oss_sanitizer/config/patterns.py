@@ -76,13 +76,26 @@ class PatternsConfig:
 
     skip_paths: list[str] = field(
         default_factory=lambda: [
+            # version control
             ".git/",
-            "node_modules/",
+            # python
             "__pycache__/",
             ".venv/",
-            "vendor/",
+            "venv/",
+            ".tox/",
+            # javascript / typescript
+            "node_modules/",
+            "bower_components/",
+            ".next/",
+            ".nuxt/",
+            # java
             ".gradle/",
             ".mvn/",
+            "target/",
+            # php
+            "vendor/",
+            # docker compose
+            "compose/",
         ]
     )
 
