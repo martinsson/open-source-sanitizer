@@ -10,7 +10,7 @@ import git
 from .config import Config
 from .models import Finding, ScanReport
 from .scanner_history import scan_git_history, should_skip, try_decode
-from .scanners import algorithms, dependencies, secrets, urls
+from .scanners import algorithms, dependencies, outdated_crypto, secrets, urls
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,7 @@ def _run_scanners(text: str, file_path: str, config: Config, commit_sha: str | N
         secrets.scan_for_secrets(text, file_path, config, commit_sha)
         + urls.scan_for_internal_references(text, file_path, config, commit_sha)
         + algorithms.scan_for_sensitive_algorithms(text, file_path, config, commit_sha)
+        + outdated_crypto.scan_for_outdated_crypto(text, file_path, config, commit_sha)
     )
 
 
