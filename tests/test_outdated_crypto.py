@@ -35,12 +35,13 @@ def test_skipped_for_build_files():
 
 @pytest.mark.parametrize("snippet", [
     'DES.new(key, DES.MODE_CBC)',               # Python pycryptodome
-    'Cipher.getInstance("DES")',               # Java
+    'Cipher.getInstance("DES")',               # Java inline
     'Cipher.getInstance("DES/CBC/PKCS5Padding")',
     "crypto.createCipher('des', key)",         # Node.js
     "openssl_encrypt($data, 'des-cbc', $key)", # PHP
     "new DESKeySpec(rawKey)",                  # Java key spec
     'cipher = DES.new(key)',
+    'ENCRYPTION_ALGORITHM = "DES"',            # constant declaration
 ])
 def test_detects_des(snippet):
     config = Config()
@@ -62,6 +63,7 @@ def test_detects_des(snippet):
     "crypto.createCipher('des3', key)",
     "openssl_encrypt($d, 'des-ede3-cbc', $k)",
     '3DES encryption used here',
+    'ENCRYPTION_ALGORITHM = "DESede"',         # constant declaration
 ])
 def test_detects_triple_des(snippet):
     config = Config()
@@ -81,6 +83,7 @@ def test_detects_triple_des(snippet):
     'Cipher.getInstance("RC4")',
     "crypto.createCipher('rc4', key)",
     'SecretKeySpec(key, "RC4")',
+    'STREAM_CIPHER = "RC4"',                   # constant declaration
 ])
 def test_detects_rc4(snippet):
     config = Config()
@@ -98,6 +101,7 @@ def test_detects_rc4(snippet):
     'Cipher.getInstance("RC2")',
     'SecretKeySpec(key, "RC2")',
     "openssl_encrypt($d, 'rc2-cbc', $k)",
+    'CIPHER_ALGO = "RC2"',                     # constant declaration
 ])
 def test_detects_rc2(snippet):
     config = Config()
@@ -118,6 +122,7 @@ def test_detects_rc2(snippet):
     'MD5.new(data)',
     'crypto.createHash("md5")',
     'hash("md5", $password)',
+    'HASH_ALGORITHM = "MD5"',                  # constant declaration
 ])
 def test_detects_md5(snippet):
     config = Config()
@@ -138,6 +143,7 @@ def test_detects_md5(snippet):
     'SHA1.new(data)',
     'crypto.createHash("sha1")',
     'hash("sha1", $password)',
+    'DIGEST_ALGORITHM = "SHA-1"',              # constant declaration
 ])
 def test_detects_sha1(snippet):
     config = Config()
@@ -156,6 +162,7 @@ def test_detects_sha1(snippet):
     'Blowfish.new(key)',
     'SecretKeySpec(key, "Blowfish")',
     "openssl_encrypt($d, 'bf-cbc', $k)",
+    'CIPHER_ALGO = "Blowfish"',                # constant declaration
 ])
 def test_detects_blowfish(snippet):
     config = Config()
