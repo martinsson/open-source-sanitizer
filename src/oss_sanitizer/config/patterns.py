@@ -94,8 +94,6 @@ class PatternsConfig:
             "target/",
             # php
             "vendor/",
-            # docker compose
-            "compose/",
         ]
     )
 
