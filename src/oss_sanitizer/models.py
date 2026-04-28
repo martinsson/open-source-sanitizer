@@ -15,6 +15,7 @@ class FindingType(Enum):
     INTERNAL_URL = "internal_url"
     INTERNAL_HOSTNAME = "internal_hostname"
     SENSITIVE_ALGORITHM = "sensitive_algorithm"
+    OUTDATED_ALGORITHM = "outdated_algorithm"
 
 
 @dataclass
