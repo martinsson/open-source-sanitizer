@@ -1,6 +1,6 @@
 [project]
 name = "oss-sanitizer"
-version = "0.1.0"
+version = "0.2.0"
 description = "Source code compliance scanner for the Geneva Open Source Charter"
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -35,6 +35,7 @@ dev = [
     "flake8-cognitive-complexity>=0.1",
     "wemake-python-styleguide>=0.19",
     "flake8-simplify>=0.21",
+    "pyinstaller>=6.0",
 ]
 
 [tool.pytest.ini_options]
