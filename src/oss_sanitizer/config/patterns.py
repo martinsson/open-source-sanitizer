@@ -25,6 +25,7 @@ class ScoringWeights:
     internal_url: float = 7.0
     internal_hostname: float = 6.0
     sensitive_algorithm: float = 8.0
+    outdated_crypto: float = 7.0
 
 
 @dataclass
