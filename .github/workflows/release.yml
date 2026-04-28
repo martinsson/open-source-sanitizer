@@ -71,7 +71,7 @@ jobs:
           --hidden-import detect_secrets.plugins.slack
           --hidden-import tldextract
           --collect-data tldextract
-          src/oss_sanitizer/cli.py
+          build_entry.py
 
       - name: Smoke test
         run: dist/${{ matrix.artifact }} --help
