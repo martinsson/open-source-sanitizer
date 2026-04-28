@@ -11,6 +11,7 @@ from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn
 
 from .cli_args import build_parser, print_sample_config
 from .config import Config
+from .fixer import apply_fixes, make_scrubbers, write_replacement_map
 from .report import render_markdown
 from .scanner import scan
 
@@ -40,6 +41,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     report = _run_scan_with_progress(repo_path, config)
+
+    if args.fix:
+        _run_fix(report.findings, repo_path)
+
     markdown = render_markdown(report)
     _write_output(markdown, args)
 
@@ -76,6 +81,14 @@ def _run_scan_with_progress(repo_path, config):
             progress.update(task_id, total=total, completed=current, description=f"Scanning: {item[:PROGRESS_ITEM_TRUNCATE]}")
 
         return scan(repo_path, config, progress_callback=on_progress)
+
+
+def _run_fix(findings, repo_path: Path) -> None:
+    scrubbers = make_scrubbers(findings)
+    replacement_map = {k: v for s in scrubbers for k, v in s.replacements.items()}
+    write_replacement_map(replacement_map, repo_path / "oss-sanitizer-replacements.yaml")
+    apply_fixes(findings, scrubbers, repo_path)
+    console.print(f"[green]Fixed {len(replacement_map)} unique value(s). Replacement map: oss-sanitizer-replacements.yaml[/green]")
 
 
 def _write_output(markdown: str, args) -> None:

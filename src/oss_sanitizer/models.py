@@ -30,6 +30,7 @@ class Finding:
     snippet: str  # code snippet for context
     explanation: str  # why this was flagged
     commit_sha: str | None = None  # set when scanning history
+    match_value: str | None = None  # exact string to replace during --fix
 
 
 @dataclass
