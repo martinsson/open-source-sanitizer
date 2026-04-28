@@ -1,0 +1,65 @@
+name: Build wheelhouse bundle (experimental)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to build from
+        required: false
+        default: main
+
+permissions:
+  contents: write
+
+jobs:
+  build-bundle:
+    name: Build wheelhouse bundle (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            bundle: oss-sanitizer-bundle-linux.zip
+          - os: windows-latest
+            bundle: oss-sanitizer-bundle-windows.zip
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Build project wheel
+        run: uv build --wheel --out-dir wheelhouse/
+
+      - name: Download core runtime dependency wheels
+        # openai/anthropic (LLM deps) excluded — --llm is off by default and
+        # their transitive trees are too large for CI runners.
+        run: >
+          uv run pip download --dest wheelhouse/ --only-binary=:all:
+          "gitpython>=3.1"
+          "pyyaml>=6.0"
+          "rich>=13.0"
+          "tldextract>=5.3.1"
+          "jinja2>=3.1.6"
+          "detect-secrets>=1.5.0"
+
+      - name: Zip wheelhouse (Linux)
+        if: runner.os == 'Linux'
+        run: cd wheelhouse && zip -r ../${{ matrix.bundle }} .
+
+      - name: Zip wheelhouse (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path wheelhouse\* -DestinationPath ${{ matrix.bundle }}
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.bundle }}
+          path: ${{ matrix.bundle }}
+          retention-days: 14
