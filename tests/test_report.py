@@ -110,3 +110,19 @@ def test_render_report_history_flag():
     report.scan_history = True
     md = render_markdown(report)
     assert "**History scanned:** Yes" in md
+
+
+def test_render_report_with_outdated_algorithm():
+    findings = [
+        Finding(FindingType.OUTDATED_ALGORITHM, "MD5 usage detected", "crypto.py", 3, 5.0,
+                "   3 | hashlib.md5(data)", "Replace MD5 with SHA-256 or better"),
+    ]
+    report = _make_report(findings=findings)
+    md = render_markdown(report)
+
+    assert "## Outdated Algorithms" in md
+    assert "MD5 usage detected" in md
+    assert "### `crypto.py`" in md
+    assert "**Line 3**" in md
+    assert "score: 5.0" in md
+    assert "| Outdated Algorithms | 1 |" in md

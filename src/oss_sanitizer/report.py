@@ -15,6 +15,7 @@ TYPE_LABELS = {
     FindingType.INTERNAL_URL: ("Internal URLs", "URLs pointing to internal government infrastructure."),
     FindingType.INTERNAL_HOSTNAME: ("Internal Hostnames", "Server names and internal infrastructure identifiers."),
     FindingType.SENSITIVE_ALGORITHM: ("Sensitive Algorithms", "Government-specific business logic that may require review before publication."),
+    FindingType.OUTDATED_ALGORITHM: ("Outdated Algorithms", "Cryptographic algorithms considered insecure (MD5, SHA-1, DES, RC4, etc.)."),
 }
 
 TYPE_ORDER = [
@@ -22,6 +23,7 @@ TYPE_ORDER = [
     FindingType.INTERNAL_URL,
     FindingType.INTERNAL_HOSTNAME,
     FindingType.SENSITIVE_ALGORITHM,
+    FindingType.OUTDATED_ALGORITHM,
 ]
 
 _env = Environment(
