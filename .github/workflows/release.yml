@@ -127,10 +127,17 @@ jobs:
         with:
           path: dist/
 
+      - name: Bundle all artifacts into a single zip
+        run: |
+          find dist/ -type f | sort
+          zip -j oss-sanitizer-${{ steps.version.outputs.tag }}-all.zip dist/**/*
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           prerelease: ${{ steps.version.outputs.prerelease }}
           generate_release_notes: true
-          files: dist/**/*
+          files: |
+            dist/**/*
+            oss-sanitizer-${{ steps.version.outputs.tag }}-all.zip
